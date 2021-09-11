@@ -1,18 +1,29 @@
 <template>
-  <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js + TypeScript App"/>
-  </div>
+  <VirtualBookExplorer
+    :model="book"
+    :sectionPath="[0]"
+    @change="onChangeRequest($event)"
+  />
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
-import HelloWorld from '@/components/HelloWorld.vue'; // @ is an alias to /src
+import { Component, Vue } from 'vue-property-decorator'
+import VirtualBookExplorer from '@/components/VirtualBookExplorer.vue'
+import VirtualBook from '@/classes/VirtualBook'
+import { OperationRequest } from '@/classes/OperationEngine'
 
 @Component({
   components: {
-    HelloWorld,
+    VirtualBookExplorer,
   },
 })
-export default class Home extends Vue {}
+export default class Home extends Vue {
+  get book(): VirtualBook {
+    return this.$store.state.book;
+  }
+
+  onChangeRequest(request: OperationRequest): void {
+    this.$store.commit('updateBook', request);
+  }
+}
 </script>
