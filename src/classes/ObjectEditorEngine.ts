@@ -1,14 +1,15 @@
 import OperationEngine, { OperationRequest, OperationHandler } from '@/classes/OperationEngine'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
-import { set } from 'lodash'
 
 export type ValueMap = {[k: string]: unknown};
+
+export type ValuePath = (string | number)[];
 
 export class SetValueRequest<T> implements OperationRequest {
   type = 'set';
   value?: T;
   previousValue?: T;
-  path?: (string | number)[];
+  path?: ValuePath;
 
   constructor(change?: ValueChangeDescription<T>) {
     if(change) {
@@ -19,17 +20,89 @@ export class SetValueRequest<T> implements OperationRequest {
   }
 
   static defaultHandler: OperationHandler<ValueMap> = {
-    apply(request: SetValueRequest<ValueMap>, target: ValueMap): ValueMap {
+    apply(request: SetValueRequest<unknown>, target: ValueMap): ValueMap {
       if(request && request.path) {
-        set(target, request.path, request.value);
+        const owner = ObjectEditorEngine.getValueOwner(target, request.path);
+        if(owner) {
+          const key = request.path[request.path.length - 1];
+          owner[key] = request.value;
+        }
       }
       return target;
     },
-    undo(request: SetValueRequest<ValueMap>, target: ValueMap): ValueMap {
+    undo(request: SetValueRequest<unknown>, target: ValueMap): ValueMap {
       if(request && request.path) {
-        set(target, request.path, request.previousValue);
+        const owner = ObjectEditorEngine.getValueOwner(target, request.path);
+        if(owner) {
+          const key = request.path[request.path.length - 1];
+          owner[key] = request.previousValue;
+        }
       }
       return target;
+    },
+  }
+}
+
+export class InsertValueRequest<T> implements OperationRequest {
+  type = 'insert';
+  path?: ValuePath;
+  value?: T;
+
+  constructor(path?: ValuePath, value?: T) {
+    this.path = path;
+    this.value = value;
+  }
+
+  static defaultHandler: OperationHandler<ValueMap> = {
+    apply(request: InsertValueRequest<unknown>, target: ValueMap): ValueMap {
+      if(request && request.path) {
+        const owner = ObjectEditorEngine.getValueOwner(target, request.path);
+        if(owner) {
+          const key = request.path[request.path.length - 1];
+          if(Array.isArray(owner) && typeof key === 'number') {
+            owner.splice(key, 0, request.value);
+          } else {
+            owner[key] = request.value;
+          }
+        }
+      }
+      return target;
+    },
+    undo(request: InsertValueRequest<unknown>, target: ValueMap): ValueMap {
+      if(request && request.path) {
+        const owner = ObjectEditorEngine.getValueOwner(target, request.path);
+        if(owner) {
+          const key = request.path[request.path.length - 1];
+          if(Array.isArray(owner) && typeof key === 'number') {
+            owner.splice(key, 1);
+          } else {
+            if(key in owner) {
+              delete owner[key];
+            }
+          }
+        }
+      }
+      return target;
+    },
+  }
+}
+
+export class DeleteValueRequest<T> implements OperationRequest {
+  type = 'delete';
+  path?: ValuePath;
+  value?: T;
+
+  constructor(path?: ValuePath, value?: T) {
+    this.path = path;
+    this.value = value;
+  }
+
+  static defaultHandler: OperationHandler<ValueMap> = {
+    apply(request: DeleteValueRequest<unknown>, target: ValueMap): ValueMap {
+      return InsertValueRequest.defaultHandler.undo(request, target);
+    },
+    undo(request: DeleteValueRequest<unknown>, target: ValueMap): ValueMap {
+      return InsertValueRequest.defaultHandler.apply(request, target);
     },
   }
 }
@@ -38,7 +111,23 @@ export default class ObjectEditorEngine extends OperationEngine<ValueMap> {
   constructor() {
     super();
     this.handlers = {
+      delete: DeleteValueRequest.defaultHandler,
+      insert: InsertValueRequest.defaultHandler,
       set: SetValueRequest.defaultHandler,
     };
+  }
+
+  static getValueOwner(source: ValueMap, path: ValuePath): ValueMap | undefined {
+    let target = source;
+    const maxIndex = path.length - 2;
+    for(let i = 0; i <= maxIndex; i++) {
+      const step = path[i];
+      if(target && typeof target[step] === 'object') {
+        target = target[step] as ValueMap;
+      } else {
+        return undefined;
+      }
+    }
+    return target;
   }
 }

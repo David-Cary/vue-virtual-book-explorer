@@ -5,7 +5,7 @@ export interface OperationRequest {
 export interface OperationHandler<T> {
   type?: string;
   apply: (request: OperationRequest, target: T) => T;
-  undo?: (request: OperationRequest, target: T) => T;
+  undo: (request: OperationRequest, target: T) => T;
 }
 
 export default class OperationEngine<T> {
