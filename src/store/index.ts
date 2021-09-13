@@ -12,11 +12,15 @@ export default new Vuex.Store({
         new VirtualBookSection()
       ]
     },
-    opEngine: new ObjectEditorEngine()
+    opEngine: new ObjectEditorEngine(),
+    clipboard: {}
   },
   mutations: {
     updateBook(state, payload) {
       state.opEngine.apply([payload], state.book);
+    },
+    updateClipboard(state, payload) {
+      state.clipboard = payload;
     }
   },
   actions: {

@@ -24,11 +24,22 @@
       <template
         v-for="(section, index) in targetSection.sections"
       >
-        <FolderPlusIcon
+        <div
           v-if="editable"
           :key="'add-at-'+index"
-          @click="onAddSubsection(targetSection.sections.length)"
-        />
+        >
+          <FolderPlusIcon
+            @click="onAddSubsection(index)"
+          />
+          <span
+            v-if="copiedSection"
+            class="add-from-clipboard"
+            @click="onPasteSubsection(index)"
+          >
+            <ArrowLeftIcon/>
+            <ClipboardIcon/>
+          </span>
+        </div>
         <VirtualBookSectionRenderer
           :source="source"
           :sectionPath="sectionPath.concat(index)"
@@ -38,15 +49,26 @@
           @change="$emit('change',$event)"
         />
       </template>
-      <FolderPlusIcon
-        v-if="editable"
-        @click="onAddSubsection(targetSection.sections.length)"
-      />
+      <div v-if="editable">
+        <FolderPlusIcon
+          @click="onAddSubsection(targetSection.sections.length)"
+        />
+        <span
+          v-if="copiedSection"
+          class="add-from-clipboard"
+          @click="onPasteSubsection(targetSection.sections.length)"
+        >
+          <ArrowLeftIcon/>
+          <ClipboardIcon/>
+        </span>
+      </div>
     </div>
     <div
       v-if="editable"
       class="vbook-section-menu"
     >
+      <CopyIcon @click="onCopySection()"/>
+      <ScissorsIcon @click="onCutSection()"/>
       <FolderMinusIcon @click="onRemoveSection()"/>
     </div>
   </div>
@@ -57,7 +79,14 @@
 import { VNode } from 'vue'
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { get, clamp, cloneDeep } from 'lodash'
-import { FolderMinusIcon, FolderPlusIcon } from 'vue-feather-icons'
+import {
+  FolderMinusIcon,
+  FolderPlusIcon,
+  CopyIcon,
+  ScissorsIcon,
+  ClipboardIcon,
+  ArrowLeftIcon,
+} from 'vue-feather-icons'
 import VirtualBook, { VirtualBookSection } from '@/classes/VirtualBook'
 import { SetValueRequest, InsertValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEngine'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
@@ -70,6 +99,10 @@ import VirtualBookContentRenderer from '@/components/VirtualBookContentRenderer.
     VirtualBookContentRenderer,
     FolderMinusIcon,
     FolderPlusIcon,
+    CopyIcon,
+    ScissorsIcon,
+    ClipboardIcon,
+    ArrowLeftIcon,
   }
 })
 export default class VirtualBookSectionRenderer extends Vue {
@@ -107,6 +140,14 @@ export default class VirtualBookSectionRenderer extends Vue {
     return this.editable ? 'vbook-editor-subsections' : '';
   }
 
+  get copiedSection(): VirtualBookSection | undefined {
+    const data = this.$store.state.clipboard?.data;
+    if(typeof data === 'object' && data?.contents) {
+      return data as VirtualBookSection;
+    }
+    return undefined;
+  }
+
   onTitleChange(change: ValueChangeDescription<string>): void {
     const request = new SetValueRequest(change);
     request.path = this.fullPath.concat('title');
@@ -125,6 +166,47 @@ export default class VirtualBookSectionRenderer extends Vue {
       new VirtualBookSection()
     );
     this.$emit('change', request);
+  }
+
+  onCopySection(): void {
+    this.$store.commit(
+      'updateClipboard',
+      {
+        data: cloneDeep(this.targetSection)
+      }
+    );
+  }
+
+  onCutSection(): void {
+    this.$store.commit(
+      'updateClipboard',
+      {
+        data: cloneDeep(this.targetSection),
+        onPaste: {
+          emitChange: new DeleteValueRequest(
+            this.fullPath,
+            cloneDeep(this.targetSection)
+          ),
+          clear: true,
+        },
+      }
+    );
+  }
+
+  onPasteSubsection(index: number): void {
+    const request = new InsertValueRequest(
+      this.fullPath.concat('sections', index),
+      cloneDeep(this.copiedSection)
+    );
+    this.$emit('change', request);
+    if(this.$store.state.clipboard?.onPaste) {
+      if(this.$store.state.clipboard.onPaste.emitChange) {
+        this.$emit('change', this.$store.state.clipboard.onPaste.emitChange);
+      }
+      if(this.$store.state.clipboard.onPaste.clear) {
+        this.$store.commit('updateClipboard', null);
+      }
+    }
   }
 
   onRemoveSection(): void {
@@ -154,4 +236,10 @@ svg.feather-folder-plus
   cursor cell
 svg.feather-folder-minus
   cursor pointer
+svg.feather-copy
+  cursor pointer
+svg.feather-scissors
+  cursor pointer
+.add-from-clipboard
+  cursor copy
 </style>
