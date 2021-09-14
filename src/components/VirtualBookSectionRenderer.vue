@@ -24,22 +24,14 @@
       <template
         v-for="(section, index) in targetSection.sections"
       >
-        <div
+        <VirtualBookSectionInjector
           v-if="editable"
           :key="'add-at-'+index"
-        >
-          <FolderPlusIcon
-            @click="onAddSubsection(index)"
-          />
-          <span
-            v-if="copiedSection"
-            class="add-from-clipboard"
-            @click="onPasteSubsection(index)"
-          >
-            <ArrowLeftIcon/>
-            <ClipboardIcon/>
-          </span>
-        </div>
+          :source="source"
+          :basePath="fullPath"
+          :index="index"
+          @change="$emit('change', $event)"
+        />
         <VirtualBookSectionRenderer
           :source="source"
           :sectionPath="sectionPath.concat(index)"
@@ -49,26 +41,26 @@
           @change="$emit('change',$event)"
         />
       </template>
-      <div v-if="editable">
-        <FolderPlusIcon
-          @click="onAddSubsection(targetSection.sections.length)"
-        />
-        <span
-          v-if="copiedSection"
-          class="add-from-clipboard"
-          @click="onPasteSubsection(targetSection.sections.length)"
-        >
-          <ArrowLeftIcon/>
-          <ClipboardIcon/>
-        </span>
-      </div>
+      <VirtualBookSectionInjector
+        v-if="editable"
+        :source="source"
+        :basePath="fullPath"
+        :index="targetSection.sections.length"
+        @change="$emit('change', $event)"
+      />
     </div>
     <div
       v-if="editable"
       class="vbook-section-menu"
     >
-      <CopyIcon @click="onCopySection()"/>
-      <ScissorsIcon @click="onCutSection()"/>
+      <CopyIcon
+        :class="copyIconClass"
+        @click="onCopySection()"
+      />
+      <ScissorsIcon
+        :class="cutIconClass"
+        @click="onCutSection()"
+      />
       <FolderMinusIcon @click="onRemoveSection()"/>
     </div>
   </div>
@@ -81,28 +73,24 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 import { get, clamp, cloneDeep } from 'lodash'
 import {
   FolderMinusIcon,
-  FolderPlusIcon,
   CopyIcon,
   ScissorsIcon,
-  ClipboardIcon,
-  ArrowLeftIcon,
 } from 'vue-feather-icons'
 import VirtualBook, { VirtualBookSection } from '@/classes/VirtualBook'
-import { SetValueRequest, InsertValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEngine'
+import { SetValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEngine'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import TextRenderer from '@/components/TextRenderer.vue'
 import VirtualBookContentRenderer from '@/components/VirtualBookContentRenderer.vue'
+import VirtualBookSectionInjector from '@/components/VirtualBookSectionInjector.vue'
 
 @Component ({
   components: {
     TextRenderer,
     VirtualBookContentRenderer,
+    VirtualBookSectionInjector,
     FolderMinusIcon,
-    FolderPlusIcon,
     CopyIcon,
     ScissorsIcon,
-    ClipboardIcon,
-    ArrowLeftIcon,
   }
 })
 export default class VirtualBookSectionRenderer extends Vue {
@@ -132,6 +120,24 @@ export default class VirtualBookSectionRenderer extends Vue {
     return `h${clamp(this.sectionDepth, 1, 6)}`;
   }
 
+  get isCopied(): boolean {
+    return this.copiedSection === this.targetSection;
+  }
+
+  get copyIconClass(): string {
+    if(this.isCopied) {
+      return this.$store.state.clipboard?.remove ? '' : 'active-icon';
+    }
+    return '';
+  }
+
+  get cutIconClass(): string {
+    if(this.isCopied) {
+      return this.$store.state.clipboard?.remove ? 'active-icon' : '';
+    }
+    return '';
+  }
+
   get subsectionsPaneClass(): string {
     return this.sectionDepth > 6 ? 'indented' : '';
   }
@@ -141,9 +147,9 @@ export default class VirtualBookSectionRenderer extends Vue {
   }
 
   get copiedSection(): VirtualBookSection | undefined {
-    const data = this.$store.state.clipboard?.data;
-    if(typeof data === 'object' && data?.contents) {
-      return data as VirtualBookSection;
+    const value = this.$store.state.clipboard?.source;
+    if(typeof value === 'object' && value?.contents) {
+      return value as VirtualBookSection;
     }
     return undefined;
   }
@@ -160,19 +166,11 @@ export default class VirtualBookSectionRenderer extends Vue {
     this.$emit('change', request);
   }
 
-  onAddSubsection(index: number): void {
-    const request = new InsertValueRequest(
-      this.fullPath.concat('sections', index),
-      new VirtualBookSection()
-    );
-    this.$emit('change', request);
-  }
-
   onCopySection(): void {
     this.$store.commit(
       'updateClipboard',
       {
-        data: cloneDeep(this.targetSection)
+        source: this.targetSection
       }
     );
   }
@@ -181,32 +179,10 @@ export default class VirtualBookSectionRenderer extends Vue {
     this.$store.commit(
       'updateClipboard',
       {
-        data: cloneDeep(this.targetSection),
-        onPaste: {
-          emitChange: new DeleteValueRequest(
-            this.fullPath,
-            cloneDeep(this.targetSection)
-          ),
-          clear: true,
-        },
+        source: this.targetSection,
+        remove: true,
       }
     );
-  }
-
-  onPasteSubsection(index: number): void {
-    const request = new InsertValueRequest(
-      this.fullPath.concat('sections', index),
-      cloneDeep(this.copiedSection)
-    );
-    this.$emit('change', request);
-    if(this.$store.state.clipboard?.onPaste) {
-      if(this.$store.state.clipboard.onPaste.emitChange) {
-        this.$emit('change', this.$store.state.clipboard.onPaste.emitChange);
-      }
-      if(this.$store.state.clipboard.onPaste.clear) {
-        this.$store.commit('updateClipboard', null);
-      }
-    }
   }
 
   onRemoveSection(): void {
@@ -232,14 +208,12 @@ export default class VirtualBookSectionRenderer extends Vue {
   right 0px
 .indented
   margin-left 8px
-svg.feather-folder-plus
-  cursor cell
 svg.feather-folder-minus
   cursor pointer
 svg.feather-copy
   cursor pointer
 svg.feather-scissors
   cursor pointer
-.add-from-clipboard
-  cursor copy
+.active-icon
+  background-color yellow
 </style>
