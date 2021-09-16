@@ -19,8 +19,8 @@ export class SetValueRequest<T> implements OperationRequest {
     }
   }
 
-  static defaultHandler: OperationHandler<ValueMap> = {
-    apply(request: SetValueRequest<unknown>, target: ValueMap): ValueMap {
+  static defaultHandler: OperationHandler<unknown> = {
+    apply(request: SetValueRequest<unknown>, target: unknown): unknown {
       if(request && request.path) {
         const owner = ObjectEditorEngine.getValueOwner(target, request.path);
         if(owner) {
@@ -30,7 +30,7 @@ export class SetValueRequest<T> implements OperationRequest {
       }
       return target;
     },
-    undo(request: SetValueRequest<unknown>, target: ValueMap): ValueMap {
+    undo(request: SetValueRequest<unknown>, target: unknown): unknown {
       if(request && request.path) {
         const owner = ObjectEditorEngine.getValueOwner(target, request.path);
         if(owner) {
@@ -53,8 +53,8 @@ export class InsertValueRequest<T> implements OperationRequest {
     this.value = value;
   }
 
-  static defaultHandler: OperationHandler<ValueMap> = {
-    apply(request: InsertValueRequest<unknown>, target: ValueMap): ValueMap {
+  static defaultHandler: OperationHandler<unknown> = {
+    apply(request: InsertValueRequest<unknown>, target: unknown): unknown {
       if(request && request.path) {
         const owner = ObjectEditorEngine.getValueOwner(target, request.path);
         if(owner) {
@@ -68,7 +68,7 @@ export class InsertValueRequest<T> implements OperationRequest {
       }
       return target;
     },
-    undo(request: InsertValueRequest<unknown>, target: ValueMap): ValueMap {
+    undo(request: InsertValueRequest<unknown>, target: unknown): unknown {
       if(request && request.path) {
         const owner = ObjectEditorEngine.getValueOwner(target, request.path);
         if(owner) {
@@ -97,17 +97,17 @@ export class DeleteValueRequest<T> implements OperationRequest {
     this.value = value;
   }
 
-  static defaultHandler: OperationHandler<ValueMap> = {
-    apply(request: DeleteValueRequest<unknown>, target: ValueMap): ValueMap {
+  static defaultHandler: OperationHandler<unknown> = {
+    apply(request: DeleteValueRequest<unknown>, target: unknown): unknown {
       return InsertValueRequest.defaultHandler.undo(request, target);
     },
-    undo(request: DeleteValueRequest<unknown>, target: ValueMap): ValueMap {
+    undo(request: DeleteValueRequest<unknown>, target: unknown): unknown {
       return InsertValueRequest.defaultHandler.apply(request, target);
     },
   }
 }
 
-export default class ObjectEditorEngine extends OperationEngine<ValueMap> {
+export default class ObjectEditorEngine extends OperationEngine<unknown> {
   constructor() {
     super();
     this.handlers = {
@@ -117,17 +117,19 @@ export default class ObjectEditorEngine extends OperationEngine<ValueMap> {
     };
   }
 
-  static getValueOwner(source: ValueMap, path: ValuePath): ValueMap | undefined {
-    let target = source;
-    const maxIndex = path.length - 2;
-    for(let i = 0; i <= maxIndex; i++) {
-      const step = path[i];
-      if(target && typeof target[step] === 'object') {
-        target = target[step] as ValueMap;
-      } else {
-        return undefined;
+  static getValueOwner(source: unknown, path: ValuePath): ValueMap | undefined {
+    if(typeof source === 'object') {
+      let target = source as ValueMap;
+      const maxIndex = path.length - 2;
+      for(let i = 0; i <= maxIndex; i++) {
+        const step = path[i];
+        if(target && typeof target[step] === 'object') {
+          target = target[step] as ValueMap;
+        } else {
+          return undefined;
+        }
       }
+      return target;
     }
-    return target;
   }
 }

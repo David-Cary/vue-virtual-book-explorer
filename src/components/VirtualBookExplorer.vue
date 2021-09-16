@@ -1,5 +1,14 @@
 <template>
-  <div v-if="model">
+  <div
+    v-if="model"
+    class="vbook-explorer"
+  >
+    <TableOfContents
+      :model="model"
+      :editable="true"
+      baseURL="#/view"
+      @change="$emit('change', $event)"
+    />
     <VirtualBookSectionRenderer
       :source="model"
       :sectionPath="sectionPath"
@@ -14,10 +23,12 @@
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import VirtualBook from '@/classes/VirtualBook'
 import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.vue'
+import TableOfContents from '@/components/TableOfContents.vue'
 
 @Component ({
   components: {
     VirtualBookSectionRenderer,
+    TableOfContents,
   }
 })
 export default class VirtualBookExplorer extends Vue {
@@ -25,3 +36,7 @@ export default class VirtualBookExplorer extends Vue {
   @Prop() sectionPath?: number[];
 }
 </script>
+<style lang="stylus" scoped>
+.vbook-explorer
+  display flex
+</style>

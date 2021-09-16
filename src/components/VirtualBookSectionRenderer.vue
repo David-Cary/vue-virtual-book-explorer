@@ -64,18 +64,16 @@
       <FolderMinusIcon @click="onRemoveSection()"/>
     </div>
   </div>
-  <div v-else>Section Not Found</div>
+  <div v-else>
+    <span>Section Not Found</span>
+  </div>
 </template>
 
 <script lang="ts">
 import { VNode } from 'vue'
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { get, clamp, cloneDeep } from 'lodash'
-import {
-  FolderMinusIcon,
-  CopyIcon,
-  ScissorsIcon,
-} from 'vue-feather-icons'
+import { FolderMinusIcon, CopyIcon, ScissorsIcon } from 'vue-feather-icons'
 import VirtualBook, { VirtualBookSection } from '@/classes/VirtualBook'
 import { SetValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEngine'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
@@ -169,23 +167,31 @@ export default class VirtualBookSectionRenderer extends Vue {
   onCopySection(): void {
     this.$store.commit(
       'updateClipboard',
-      {
-        source: this.targetSection
-      }
+      this.isCopied
+        ? null
+        : {
+            source: this.targetSection,
+          }
     );
   }
 
   onCutSection(): void {
     this.$store.commit(
       'updateClipboard',
-      {
-        source: this.targetSection,
-        remove: true,
-      }
+      this.isCopied
+        ? null
+        : {
+            source: this.targetSection,
+            remove: true,
+          }
     );
   }
 
   onRemoveSection(): void {
+    if(this.targetSection?.contents.length || this.targetSection?.sections.length) {
+      const confirmed = confirm("Are you sure you want to delete this section and all it's contents?");
+      if(!confirmed) return;
+    }
     const request = new DeleteValueRequest(
       this.fullPath,
       cloneDeep(this.targetSection)
@@ -197,6 +203,8 @@ export default class VirtualBookSectionRenderer extends Vue {
 <style lang="stylus" scoped>
 .vbook-section
   position relative
+  padding-left 4px
+  width -webkit-fill-available
 .vbook-editor-subsections
   border 1px dashed rgba(0,0,0,0.5)
   border-radius 4px

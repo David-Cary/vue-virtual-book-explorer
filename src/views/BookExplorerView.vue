@@ -1,13 +1,13 @@
 <template>
   <VirtualBookExplorer
     :model="book"
-    :sectionPath="[0]"
+    :sectionPath="sectionPath"
     @change="onChangeRequest($event)"
   />
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
+import { Component, Prop, Vue } from 'vue-property-decorator'
 import VirtualBookExplorer from '@/components/VirtualBookExplorer.vue'
 import VirtualBook from '@/classes/VirtualBook'
 import { OperationRequest } from '@/classes/OperationEngine'
@@ -17,7 +17,9 @@ import { OperationRequest } from '@/classes/OperationEngine'
     VirtualBookExplorer,
   },
 })
-export default class Home extends Vue {
+export default class BookExplorerView extends Vue {
+  @Prop() sectionPath?: string;
+
   get book(): VirtualBook {
     return this.$store.state.book;
   }

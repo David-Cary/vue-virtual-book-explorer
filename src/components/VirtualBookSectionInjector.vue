@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="vbook-section-injector">
     <FolderPlusIcon
       @click="onAddSubsection(index)"
     />
@@ -8,8 +8,8 @@
       class="add-from-clipboard"
       @click="onPasteSubsection(index)"
     >
-      <ArrowLeftIcon/>
       <ClipboardIcon/>
+      <PlusIcon class="mini-plus" size="1x"/>
     </span>
   </div>
 </template>
@@ -17,11 +17,7 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { cloneDeep } from 'lodash'
-import {
-  FolderPlusIcon,
-  ClipboardIcon,
-  ArrowLeftIcon,
-} from 'vue-feather-icons'
+import { FolderPlusIcon, ClipboardIcon, PlusIcon } from 'vue-feather-icons'
 import VirtualBook, { VirtualBookSection } from '@/classes/VirtualBook'
 import { InsertValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEngine'
 
@@ -29,7 +25,7 @@ import { InsertValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEn
   components: {
     FolderPlusIcon,
     ClipboardIcon,
-    ArrowLeftIcon,
+    PlusIcon,
   }
 })
 export default class VirtualBookSectionInjector extends Vue {
@@ -87,8 +83,15 @@ export default class VirtualBookSectionInjector extends Vue {
 }
 </script>
 <style lang="stylus" scoped>
+.vbook-section-injector
+  width max-content
 svg.feather-folder-plus
   cursor cell
 .add-from-clipboard
   cursor copy
+  position relative
+.mini-plus
+  position absolute
+  top -4px
+  left 4px
 </style>

@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import VueRouter, { RouteConfig } from 'vue-router'
-import Home from '../views/Home.vue'
+import BookExplorerView from '../views/BookExplorerView.vue'
 
 Vue.use(VueRouter)
 
@@ -8,7 +8,24 @@ const routes: Array<RouteConfig> = [
   {
     path: '/',
     name: 'Home',
-    component: Home
+    component: BookExplorerView,
+    props: {
+      sectionPath: [0],
+    },
+  },
+  {
+    path: '/view/*',
+    name: 'View Content',
+    component: BookExplorerView,
+    props: route => {
+      const startText = '/view/';
+      const trailingText = route.path.substr(startText.length);
+      const steps = trailingText.split('/');
+        console.log({route, steps});
+      return {
+        sectionPath: steps,
+      };
+    },
   }
 ]
 
