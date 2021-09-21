@@ -21,7 +21,6 @@ const routes: Array<RouteConfig> = [
       const startText = '/view/';
       const trailingText = route.path.substr(startText.length);
       const steps = trailingText.split('/');
-        console.log({route, steps});
       return {
         sectionPath: steps,
       };

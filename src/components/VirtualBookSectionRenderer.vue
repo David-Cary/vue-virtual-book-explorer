@@ -11,7 +11,6 @@
       @change="onTitleChange($event)"
     />
     <VirtualBookContentRenderer
-      tag="div"
       :value="targetSection.contents"
       :editable="editable"
       placeholder="Section Contents"
