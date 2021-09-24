@@ -10,7 +10,7 @@
       placeholder="Section Title"
       @change="onTitleChange($event)"
     />
-    <VirtualBookContentRenderer
+    <HypertextBlock
       :value="targetSection.contents"
       :editable="editable"
       placeholder="Section Contents"
@@ -77,13 +77,13 @@ import VirtualBook, { VirtualBookSection } from '@/classes/VirtualBook'
 import { SetValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEngine'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import TextRenderer from '@/components/TextRenderer.vue'
-import VirtualBookContentRenderer from '@/components/VirtualBookContentRenderer.vue'
+import HypertextBlock from '@/components/HypertextBlock.vue'
 import VirtualBookSectionInjector from '@/components/VirtualBookSectionInjector.vue'
 
 @Component ({
   components: {
     TextRenderer,
-    VirtualBookContentRenderer,
+    HypertextBlock,
     VirtualBookSectionInjector,
     FolderMinusIcon,
     CopyIcon,

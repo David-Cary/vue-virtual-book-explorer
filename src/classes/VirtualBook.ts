@@ -1,8 +1,8 @@
-import { NodeDescriptionChild } from '@/classes/NodeDescription'
+import { JSONContent } from '@tiptap/vue-2'
 
 export class VirtualBookSection {
   title = '';
-  contents: NodeDescriptionChild[] = [];
+  contents: JSONContent[] = [];
   sections: VirtualBookSection[] = [];
 }
 
