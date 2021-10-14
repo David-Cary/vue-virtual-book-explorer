@@ -11,7 +11,7 @@
       @change="onTitleChange($event)"
     />
     <HypertextBlock
-      :value="targetSection.contents"
+      :contents="targetSection.contents"
       :editable="editable"
       placeholder="Section Contents"
       @change="onContentChange($event)"
