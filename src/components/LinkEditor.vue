@@ -56,10 +56,11 @@ export default class LinkEditor extends Vue {
 
   setTarget(value: string): void {
     if(this.editor) {
+      const previousUrl = this.editor.getAttributes('link').href;
       this.editor
         .chain()
         .focus()
-        .setLink({ target: value })
+        .setLink({ href: previousUrl, target: value })
         .run();
     }
   }

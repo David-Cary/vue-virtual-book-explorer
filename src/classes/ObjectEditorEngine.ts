@@ -73,8 +73,9 @@ export class InsertValueRequest<T> implements OperationRequest {
         const owner = ObjectEditorEngine.getValueOwner(target, request.path);
         if(owner) {
           const key = request.path[request.path.length - 1];
-          if(Array.isArray(owner) && typeof key === 'number') {
-            owner.splice(key, 1);
+          const index = Number(key);
+          if(Array.isArray(owner) && !isNaN(index)) {
+            owner.splice(index, 1);
           } else {
             if(key in owner) {
               delete owner[key];
