@@ -21,22 +21,43 @@ export class SetValueRequest<T> implements OperationRequest {
 
   static defaultHandler: OperationHandler<unknown> = {
     apply(request: SetValueRequest<unknown>, target: unknown): unknown {
-      if(request && request.path) {
-        const owner = ObjectEditorEngine.getValueOwner(target, request.path);
-        if(owner) {
-          const key = request.path[request.path.length - 1];
-          owner[key] = request.value;
+      if(request) {
+        if(request.path) {
+          const owner = ObjectEditorEngine.getValueOwner(target, request.path);
+          if(owner) {
+            const key = request.path[request.path.length - 1];
+            owner[key] = request.value;
+          }
+        } else if(target) {
+          const targetObject = target as ValueMap;
+          if(request.value) {
+            const sourceObject = request.value as ValueMap
+            for(const key in targetObject) {
+              if(key in sourceObject) continue;
+              delete targetObject[key];
+            }
+            for(const key in sourceObject) {
+              targetObject[key] = sourceObject[key];
+            }
+          } else {
+            for(const key in targetObject) {
+              delete targetObject[key];
+            }
+          }
         }
       }
       return target;
     },
     undo(request: SetValueRequest<unknown>, target: unknown): unknown {
-      if(request && request.path) {
-        const owner = ObjectEditorEngine.getValueOwner(target, request.path);
-        if(owner) {
-          const key = request.path[request.path.length - 1];
-          owner[key] = request.previousValue;
-        }
+      if(request) {
+        return SetValueRequest.defaultHandler.apply(
+          new SetValueRequest({
+            value: request.previousValue,
+            previousValue: request.value,
+            path: request.path,
+          }),
+          target
+        );
       }
       return target;
     },
