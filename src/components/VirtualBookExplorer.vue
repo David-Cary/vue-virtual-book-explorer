@@ -22,6 +22,8 @@
       <button @click="onClickRevert()">
         <Trash2Icon size="1x"/>
       </button>
+      <VirtualBookExporter :model="model" />
+      <VirtualBookImporter @complete="onImportReady($event)"/>
     </div>
   </div>
 </template>
@@ -33,12 +35,16 @@ import VirtualBook from '@/classes/VirtualBook'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
 import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
+import VirtualBookExporter from '@/components/VirtualBookExporter.vue'
+import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
 
 @Component ({
   components: {
     VirtualBookSectionRenderer,
     TableOfContents,
     Trash2Icon,
+    VirtualBookExporter,
+    VirtualBookImporter,
   }
 })
 export default class VirtualBookExplorer extends Vue {
@@ -57,8 +63,19 @@ export default class VirtualBookExplorer extends Vue {
       );
     }
   }
+
+  onImportReady(book: VirtualBook): void {
+    this.$emit(
+      'change',
+      new SetValueRequest({
+        value: book,
+        previousValue: this.model,
+      })
+    );
+  }
 }
 </script>
+
 <style lang="stylus" scoped>
 .vbook-explorer-body
   display flex
