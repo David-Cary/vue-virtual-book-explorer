@@ -10,16 +10,21 @@
       :editor="editor"
       class="menu-box"
     >
-      <button
-        :class="{ 'active-tag-button': linkActive }"
-        @click="toggleLink()"
-      >
-        <LinkIcon size="1x"/>
-      </button>
-      <LinkEditor
-        v-if="linkActive"
-        :editor="editor"
-      />
+      <div>
+        <button
+          :class="{ 'active-tag-button': linkActive }"
+          @click="toggleLink()"
+        >
+          <LinkIcon size="1x"/>
+        </button>
+      </div>
+      <div>
+        <LinkEditor
+          v-if="linkActive"
+          :editor="editor"
+          :context="context"
+        />
+      </div>
     </bubble-menu>
   </div>
 </template>
@@ -36,6 +41,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import { LinkIcon } from 'vue-feather-icons'
 import { isEqual } from 'lodash'
+import VirtualBook from '@/classes/VirtualBook'
 import LinkEditor from '@/components/LinkEditor.vue'
 
 @Component ({
@@ -47,6 +53,7 @@ import LinkEditor from '@/components/LinkEditor.vue'
   }
 })
 export default class HypertextBlock extends Vue {
+  @Prop() context?: VirtualBook;
   @Prop() editable?: boolean;
   @Watch('editable', { immediate: true })
   onEditableChange(newValue: boolean): void {
@@ -55,11 +62,11 @@ export default class HypertextBlock extends Vue {
     });
   }
 
-  @Prop() contents?: JSONContent[];
-  @Watch('contents', { immediate: true })
-  onContentsChange(newValue: JSONContent[]): void {
-    const editorContents = this.editor.getJSON();
-    if(!isEqual(editorContents.content, newValue)) {
+  @Prop() content?: JSONContent[];
+  @Watch('content', { immediate: true })
+  onContentChange(newValue: JSONContent[]): void {
+    const editorContent = this.editor.getJSON();
+    if(!isEqual(editorContent.content, newValue)) {
       this.editor.commands.setContent(newValue, false);
     }
   }
@@ -76,7 +83,7 @@ export default class HypertextBlock extends Vue {
       const doc = this.editor.getJSON();
       this.$emit('change', {
         value: doc.content,
-        previousValue: this.contents ? this.contents.slice() : undefined,
+        previousValue: this.content ? this.content.slice() : undefined,
       });
     }
   });
@@ -118,6 +125,7 @@ export default class HypertextBlock extends Vue {
 .menu-box
   border 1px solid gray
   background-color white
+  width max-content
 .active-tag-button
   background-color yellow
 </style>

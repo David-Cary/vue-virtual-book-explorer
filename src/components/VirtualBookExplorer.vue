@@ -7,15 +7,22 @@
       <TableOfContents
         :model="model"
         :editable="true"
-        baseURL="#/view"
+        :baseURL="sectionByIndicesURL"
         @change="$emit('change', $event)"
       />
-      <VirtualBookSectionRenderer
-        :source="model"
-        :sectionPath="sectionPath"
-        :editable="true"
-        @change="$emit('change', $event)"
-      />
+      <div
+        v-if="targetContent"
+        class="vbook-explorer-content-pane"
+      >
+        <VirtualBookSectionRenderer
+          :source="model"
+          :path="targetContent.path"
+          :value="targetContent.value"
+          :editable="true"
+          @change="$emit('change', $event)"
+        />
+      </div>
+      <div v-else>Content Not Found</div>
     </div>
     <div v-else>Book Not Found</div>
     <div>
@@ -31,7 +38,10 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { Trash2Icon } from 'vue-feather-icons'
-import VirtualBook from '@/classes/VirtualBook'
+import VirtualBook, {
+  VirtualBookContentSearchCriteria,
+  VirtualBookContentReference,
+} from '@/classes/VirtualBook'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
 import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
@@ -49,7 +59,24 @@ import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
 })
 export default class VirtualBookExplorer extends Vue {
   @Prop() model?: VirtualBook;
+  @Prop() contentCriteria?: VirtualBookContentSearchCriteria;
   @Prop() sectionPath?: number[];
+
+  get targetContent(): VirtualBookContentReference | null {
+    if(this.model && this.contentCriteria) {
+      return VirtualBook.findContent(this.model, this.contentCriteria);
+    }
+    return null;
+  }
+
+  get sectionByIndicesURL(): string {
+    const routes = this.$router.getRoutes();
+    const route = routes.find(route => route.name === 'Show Section By Indices');
+    if(route) {
+      return `#${route.path.replace('/*', '')}`;
+    }
+    return '';
+  }
 
   onClickRevert(): void {
     const confirmed = window.confirm('All changes will be lost. Are you sure?');
@@ -79,4 +106,6 @@ export default class VirtualBookExplorer extends Vue {
 <style lang="stylus" scoped>
 .vbook-explorer-body
   display flex
+.vbook-explorer-content-pane
+  width -webkit-fill-available
 </style>

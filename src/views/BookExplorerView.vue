@@ -1,7 +1,7 @@
 <template>
   <VirtualBookExplorer
     :model="book"
-    :sectionPath="sectionPath"
+    :contentCriteria="contentCriteria"
     @change="onChangeRequest($event)"
   />
 </template>
@@ -9,7 +9,9 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import VirtualBookExplorer from '@/components/VirtualBookExplorer.vue'
-import VirtualBook from '@/classes/VirtualBook'
+import VirtualBook, {
+  VirtualBookContentSearchCriteria
+} from '@/classes/VirtualBook'
 import { OperationRequest } from '@/classes/OperationEngine'
 
 @Component({
@@ -18,7 +20,7 @@ import { OperationRequest } from '@/classes/OperationEngine'
   },
 })
 export default class BookExplorerView extends Vue {
-  @Prop() sectionPath?: string;
+  @Prop() contentCriteria?: VirtualBookContentSearchCriteria;
 
   get book(): VirtualBook {
     return this.$store.state.book;

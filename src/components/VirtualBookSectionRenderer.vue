@@ -1,39 +1,47 @@
 <template>
   <div
-    v-if="targetSection"
+    v-if="value"
     class="vbook-section"
   >
+    <IdField
+      v-if="editable"
+      :source="source"
+      :value="value.id"
+      placeholder="Section Id"
+      @change="onIdChange($event)"
+    />
     <TextRenderer
       :tag="headerTag"
-      :value="targetSection.title"
+      :value="value.title"
       :editable="editable"
       placeholder="Section Title"
       @change="onTitleChange($event)"
     />
     <HypertextBlock
-      :contents="targetSection.contents"
+      :context="source"
+      :content="value.content"
       :editable="editable"
-      placeholder="Section Contents"
+      placeholder="Section Content"
       @change="onContentChange($event)"
     />
     <div
-      v-if="targetSection.sections"
+      v-if="value.sections"
       :class="subsectionsPaneClass"
     >
       <template
-        v-for="(section, index) in targetSection.sections"
+        v-for="(section, index) in value.sections"
       >
         <VirtualBookSectionInjector
           v-if="editable"
           :key="'add-at-'+index"
           :source="source"
-          :basePath="fullPath"
+          :basePath="path"
           :index="index"
           @change="$emit('change', $event)"
         />
         <VirtualBookSectionRenderer
           :source="source"
-          :sectionPath="sectionPath.concat(index)"
+          :path="path.concat('sections', index)"
           :editable="editable"
           :key="index"
           :class="subsectionClass"
@@ -43,8 +51,8 @@
       <VirtualBookSectionInjector
         v-if="editable"
         :source="source"
-        :basePath="fullPath"
-        :index="targetSection.sections.length"
+        :basePath="path"
+        :index="value.sections.length"
         @change="$emit('change', $event)"
       />
     </div>
@@ -71,11 +79,12 @@
 <script lang="ts">
 import { VNode } from 'vue'
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { get, clamp, cloneDeep } from 'lodash'
+import { clamp, cloneDeep } from 'lodash'
 import { FolderMinusIcon, CopyIcon, ScissorsIcon } from 'vue-feather-icons'
-import VirtualBook, { VirtualBookSection } from '@/classes/VirtualBook'
+import VirtualBook, { VirtualBookSection, PathStep } from '@/classes/VirtualBook'
 import { SetValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEngine'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
+import IdField from '@/components/IdField.vue'
 import TextRenderer from '@/components/TextRenderer.vue'
 import HypertextBlock from '@/components/HypertextBlock.vue'
 import VirtualBookSectionInjector from '@/components/VirtualBookSectionInjector.vue'
@@ -83,6 +92,7 @@ import VirtualBookSectionInjector from '@/components/VirtualBookSectionInjector.
 @Component ({
   components: {
     TextRenderer,
+    IdField,
     HypertextBlock,
     VirtualBookSectionInjector,
     FolderMinusIcon,
@@ -91,26 +101,21 @@ import VirtualBookSectionInjector from '@/components/VirtualBookSectionInjector.
   }
 })
 export default class VirtualBookSectionRenderer extends Vue {
+  @Prop() value?: VirtualBookSection;
   @Prop() source?: VirtualBook;
-  @Prop() sectionPath?: number[];
+  @Prop() path?: PathStep[];
   @Prop() editable?: boolean;
 
-  get fullPath(): (string|number)[] {
-    const path = [];
-    if(this.sectionPath) {
-      for(const step of this.sectionPath) {
-        path.push('sections', step);
+  get sectionDepth(): number {
+    let count = 0;
+    if(this.path) {
+      for(const step of this.path) {
+        if(step === 'sections') {
+          count++
+        }
       }
     }
-    return path;
-  }
-
-  get targetSection(): VirtualBookSection | null {
-    return get(this.source, this.fullPath);
-  }
-
-  get sectionDepth(): number {
-    return this.sectionPath ? this.sectionPath.length : 0;
+    return count;
   }
 
   get headerTag(): string {
@@ -118,7 +123,7 @@ export default class VirtualBookSectionRenderer extends Vue {
   }
 
   get isCopied(): boolean {
-    return this.copiedSection === this.targetSection;
+    return this.copiedSection === this.value;
   }
 
   get copyIconClass(): string {
@@ -145,7 +150,7 @@ export default class VirtualBookSectionRenderer extends Vue {
 
   get copiedSection(): VirtualBookSection | undefined {
     const value = this.$store.state.clipboard?.source;
-    if(typeof value === 'object' && value?.contents) {
+    if(typeof value === 'object' && value?.content) {
       return value as VirtualBookSection;
     }
     return undefined;
@@ -153,13 +158,17 @@ export default class VirtualBookSectionRenderer extends Vue {
 
   onTitleChange(change: ValueChangeDescription<string>): void {
     const request = new SetValueRequest(change);
-    request.path = this.fullPath.concat('title');
+    if(this.path) {
+      request.path = this.path.concat('title');
+    }
     this.$emit('change', request);
   }
 
   onContentChange(change: ValueChangeDescription<VNode[]>): void {
     const request = new SetValueRequest(change);
-    request.path = this.fullPath.concat('contents');
+    if(this.path) {
+      request.path = this.path.concat('content');
+    }
     this.$emit('change', request);
   }
 
@@ -169,7 +178,7 @@ export default class VirtualBookSectionRenderer extends Vue {
       this.isCopied
         ? null
         : {
-            source: this.targetSection,
+            source: this.value,
           }
     );
   }
@@ -180,21 +189,29 @@ export default class VirtualBookSectionRenderer extends Vue {
       this.isCopied
         ? null
         : {
-            source: this.targetSection,
+            source: this.value,
             remove: true,
           }
     );
   }
 
   onRemoveSection(): void {
-    if(this.targetSection?.contents.length || this.targetSection?.sections.length) {
-      const confirmed = confirm("Are you sure you want to delete this section and all it's contents?");
+    if(this.value?.content.length || this.value?.sections.length) {
+      const confirmed = confirm("Are you sure you want to delete this section and all it's content?");
       if(!confirmed) return;
     }
     const request = new DeleteValueRequest(
-      this.fullPath,
-      cloneDeep(this.targetSection)
+      this.path,
+      cloneDeep(this.value)
     );
+    this.$emit('change', request);
+  }
+
+  onIdChange(change: ValueChangeDescription<string>): void {
+    const request = new SetValueRequest(change);
+    if(this.path) {
+      request.path = this.path.concat('id');
+    }
     this.$emit('change', request);
   }
 }

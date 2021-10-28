@@ -1,0 +1,65 @@
+<template>
+  <input
+    type="text"
+    v-model="localValue"
+    :placeholder="placeholder"
+    :class="errorClass"
+    @input="onInput($event.target)"
+    @change="onInputComplete($event.target)"
+  />
+</template>
+
+<script lang="ts">
+import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
+import VirtualBook from '@/classes/VirtualBook'
+
+@Component
+export default class IdField extends Vue {
+  @Prop() source?: VirtualBook;
+  @Prop() value?: string;
+  @Watch('value', { immediate: true })
+  onValueChange(): void {
+    this.localValue = this.value;
+    this.errorClass = '';
+  }
+  @Prop() placeholder?: string;
+
+  localValue? = '';
+
+  errorClass = '';
+
+  onInput(field: HTMLInputElement): void {
+    this.errorClass = field.value.match(/^([a-z]|[A-Z])/) ? '' : 'invalid-id';
+    if(this.source && field.value !== this.value) {
+      const match = VirtualBook.findContent(
+        this.source,
+        {
+          id: field.value
+        }
+      );
+      if(match) {
+        this.errorClass = 'duplicate-id';
+      }
+    }
+  }
+
+  onInputComplete(): void {
+    if(this.errorClass) {
+      this.localValue = this.value;
+      this.errorClass = '';
+    } else {
+      this.$emit('change', {
+        value: this.localValue,
+        previousValue: this.value,
+      });
+    }
+  }
+}
+</script>
+
+<style lang="stylus" scoped>
+.duplicate-id
+  background-color yellow
+.invalid-id
+  background-color salmon
+</style>

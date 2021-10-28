@@ -60,7 +60,19 @@ export default class TableOfContentsSection extends Vue {
     return '';
   }
 
+  get sectionByIdURL(): string {
+    const routes = this.$router.getRoutes();
+    const route = routes.find(route => route.name === 'Show Content By Id');
+    if(route) {
+      return `#${route.path}`;
+    }
+    return '';
+  }
+
   get sectionURL(): string {
+    if(this.sectionByIdURL && this.model && this.model.id) {
+      return this.sectionByIdURL.replace(':content_id', this.model.id);
+    }
     if(this.baseURL) {
       return `${this.baseURL}/${this.index}`;
     }
