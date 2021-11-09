@@ -1,25 +1,11 @@
 <template>
   <span>
-    <button @click="showPreview()">
+    <button @click="onClickPreview()">
       <EyeIcon size="1x"/>
     </button>
     <button @click="onClickDownload()">
       <DownloadIcon size="1x"/>
     </button>
-    <div
-      v-if="previewContent"
-      class="preview-pane"
-    >
-      <div>
-        <button
-          class="close-button"
-          @click="closePreview()"
-        >
-          <XIcon size="1x"/>
-        </button>
-      </div>
-      <div v-html="previewContent"/>
-    </div>
   </span>
 </template>
 
@@ -39,14 +25,13 @@ import VirtualBook from '@/classes/VirtualBook'
 export default class VirtualBookExporter extends Vue {
   @Prop() model?: VirtualBook;
 
-  previewContent = '';
-
-  showPreview(): void {
-    this.previewContent = `<pre>${JSON.stringify(this.model, null, 2)}</pre>`;
-  }
-
-  closePreview(): void {
-    this.previewContent = '';
+  onClickPreview(): void {
+    this.$emit(
+      'showPreview',
+      {
+        value: `<pre>${JSON.stringify(this.model, null, 2)}</pre>`
+      }
+    );
   }
 
   onClickDownload(): void {
@@ -56,17 +41,3 @@ export default class VirtualBookExporter extends Vue {
   }
 }
 </script>
-
-<style lang="stylus" scoped>
-.preview-pane
-  position fixed
-  top 0px
-  left 0px
-  right 0px
-  bottom 0px
-  z-index 10
-  background-color white
-  border 4px solid gray
-.close-button
-  float right
-</style>

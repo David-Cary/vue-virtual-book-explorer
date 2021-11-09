@@ -38,9 +38,19 @@
       <button @click="onClickRevert()">
         <Trash2Icon size="1x"/>
       </button>
-      <VirtualBookExporter :model="model" />
+      <VirtualBookExporter
+        :model="model"
+        @showPreview="previewHTML = $event.value"
+      />
       <VirtualBookImporter @complete="onImportReady($event)"/>
     </div>
+    <ModalLayer
+      v-if="previewHTML"
+      @close="previewHTML = ''"
+    >
+      <template v-slot:header>Exporter Preview</template>
+      <div v-html="previewHTML"/>
+    </ModalLayer>
   </div>
 </template>
 
@@ -59,6 +69,7 @@ import HypertextBlock from '@/components/HypertextBlock.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
 import VirtualBookExporter from '@/components/VirtualBookExporter.vue'
 import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
+import ModalLayer from '@/components/ModalLayer.vue'
 
 @Component ({
   components: {
@@ -68,12 +79,15 @@ import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
     Trash2Icon,
     VirtualBookExporter,
     VirtualBookImporter,
+    ModalLayer,
   }
 })
 export default class VirtualBookExplorer extends Vue {
   @Prop() model?: VirtualBook;
   @Prop() contentCriteria?: VirtualBookContentSearchCriteria;
   @Prop() sectionPath?: number[];
+
+  previewHTML = '';
 
   get targetContent(): VirtualBookContentReference | null {
     if(this.model && this.contentCriteria) {
