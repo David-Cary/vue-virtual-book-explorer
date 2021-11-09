@@ -17,6 +17,21 @@
         >
           <LinkIcon size="1x"/>
         </button>
+        <button
+          v-if="snippetPossible"
+          :class="{ 'active-tag-button': snippetActive }"
+          @click="toggleSnippet()"
+        >
+          <CropIcon size="1x"/>
+        </button>
+      </div>
+      <div v-if="snippetActive">
+        <IdField
+          :source="context"
+          :value="snippetId"
+          placeholder="Snippet Id"
+          @change="onSnippetIdChange($event)"
+        />
       </div>
       <div>
         <LinkEditor
@@ -39,15 +54,23 @@ import {
 } from '@tiptap/vue-2'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
-import { LinkIcon } from 'vue-feather-icons'
+import {
+  CropIcon,
+  LinkIcon,
+} from 'vue-feather-icons'
 import { isEqual } from 'lodash'
+import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import VirtualBook from '@/classes/VirtualBook'
+import { Snippet } from'@/schema/Snippet'
+import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
 
 @Component ({
   components: {
     EditorContent,
     BubbleMenu,
+    IdField,
+    CropIcon,
     LinkIcon,
     LinkEditor,
   }
@@ -78,6 +101,7 @@ export default class HypertextBlock extends Vue {
     extensions: [
       StarterKit,
       Link,
+      Snippet,
     ],
     onUpdate: () => {
       const doc = this.editor.getJSON();
@@ -90,10 +114,6 @@ export default class HypertextBlock extends Vue {
 
   get linkActive(): boolean {
     return this.editor.isActive('link');
-  }
-
-  beforeDestroy(): void {
-    this.editor.destroy();
   }
 
   toggleLink(): void {
@@ -111,6 +131,46 @@ export default class HypertextBlock extends Vue {
         .setLink({ href: '' })
         .run();
     }
+  }
+
+  get snippetPossible(): boolean {
+    if(this.snippetActive) return true;
+    return this.editor.can().setSnippet({ id: '' });
+  }
+  get snippetActive(): boolean {
+    return this.editor.isActive('snippet');
+  }
+
+  toggleSnippet(): void {
+    if(this.snippetActive) {
+      this.editor
+        .chain()
+        .focus()
+        .releaseSnippet()
+        .run();
+    } else {
+      this.editor
+        .chain()
+        .focus()
+        .setSnippet({ id: '' })
+        .run();
+    }
+  }
+
+  get snippetId(): string {
+    return this.editor.getAttributes('snippet').id;
+  }
+
+  onSnippetIdChange(change: ValueChangeDescription<string>): void {
+    this.editor
+      .chain()
+      .focus()
+      .updateAttributes('snippet', { id: change.value })
+      .run();
+  }
+
+  beforeDestroy(): void {
+    this.editor.destroy();
   }
 }
 </script>

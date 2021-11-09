@@ -145,6 +145,13 @@ export default class VirtualBook {
     if('attrs' in target && target.attrs) {
       return target.attrs.id;
     }
+    if('marks' in target && target.marks) {
+      for(const mark of target.marks) {
+        if(mark && mark.attrs && 'id' in mark.attrs) {
+          return mark.attrs.id;
+        }
+      }
+    }
     return null;
   }
 
@@ -155,8 +162,8 @@ export default class VirtualBook {
       item => {
         if(item.id) {
           ids.push(item.id);
-        } else if('attr' in item && item.attrs && item.atts.id) {
-          ids.push(item.atts.id);
+        } else if('attrs' in item && item.attrs && item.attrs.id) {
+          ids.push(item.attrs.id);
         }
       }
     );

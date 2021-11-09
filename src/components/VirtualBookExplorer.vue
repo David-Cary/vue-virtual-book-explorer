@@ -15,11 +15,20 @@
         class="vbook-explorer-content-pane"
       >
         <VirtualBookSectionRenderer
+          v-if="targetContent.value.sections"
           :source="model"
           :path="targetContent.path"
           :value="targetContent.value"
           :editable="true"
           @change="$emit('change', $event)"
+        />
+        <HypertextBlock
+          v-else
+          :context="model"
+          :content="[targetContent.value]"
+          :editable="true"
+          placeholder="Target Content"
+          @change="onContentChange($event)"
         />
       </div>
       <div v-else>Content Not Found</div>
@@ -36,14 +45,17 @@
 </template>
 
 <script lang="ts">
+import { VNode } from 'vue'
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { Trash2Icon } from 'vue-feather-icons'
 import VirtualBook, {
   VirtualBookContentSearchCriteria,
   VirtualBookContentReference,
 } from '@/classes/VirtualBook'
+import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
 import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.vue'
+import HypertextBlock from '@/components/HypertextBlock.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
 import VirtualBookExporter from '@/components/VirtualBookExporter.vue'
 import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
@@ -51,6 +63,7 @@ import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
 @Component ({
   components: {
     VirtualBookSectionRenderer,
+    HypertextBlock,
     TableOfContents,
     Trash2Icon,
     VirtualBookExporter,
@@ -99,6 +112,15 @@ export default class VirtualBookExplorer extends Vue {
         previousValue: this.model,
       })
     );
+  }
+
+  onContentChange(change: ValueChangeDescription<VNode[]>): void {
+    const request = new SetValueRequest(change);
+    console.log({request})
+    /*if(this.path) {
+      request.path = this.path.concat('content');
+    }*/
+    //this.$emit('change', request);
   }
 }
 </script>
