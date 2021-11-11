@@ -1,4 +1,4 @@
-<template>
+HypertextNodeEditor<template>
   <div>
     <div
       v-if="model"
@@ -24,10 +24,10 @@
             :editable="true"
             @change="$emit('change', $event)"
           />
-          <HypertextBlock
+          <HypertextNodeEditor
             v-else
             :context="model"
-            :content="[targetContent.value]"
+            :content="targetContent.value"
             :editable="true"
             placeholder="Target Content"
             @change="onContentChange($event)"
@@ -83,7 +83,7 @@ import VirtualBook, {
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
 import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.vue'
-import HypertextBlock from '@/components/HypertextBlock.vue'
+import HypertextNodeEditor from '@/components/HypertextNodeEditor.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
 import VirtualBookExporter from '@/components/VirtualBookExporter.vue'
 import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
@@ -94,7 +94,7 @@ import StyleEditor from '@/components/StyleEditor.vue'
 @Component ({
   components: {
     VirtualBookSectionRenderer,
-    HypertextBlock,
+    HypertextNodeEditor,
     TableOfContents,
     Trash2Icon,
     VirtualBookExporter,
@@ -160,11 +160,10 @@ export default class VirtualBookExplorer extends Vue {
 
   onContentChange(change: ValueChangeDescription<VNode[]>): void {
     const request = new SetValueRequest(change);
-    console.log({request})
-    /*if(this.path) {
-      request.path = this.path.concat('content');
-    }*/
-    //this.$emit('change', request);
+    if(!request.path && this.targetContent) {
+      request.path = this.targetContent.path;
+    }
+    this.$emit('change', request);
   }
 
   onStyleChange(change: ValueChangeDescription<unknown>): void {

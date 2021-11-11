@@ -25,6 +25,15 @@
           <CropIcon size="1x"/>
         </button>
       </div>
+      <div v-if="inBulletList | inOrderedList">
+        <ListIcon size="1x"/>
+        <input
+          type="checkbox"
+          checked="inOrderedList"
+          @change="toggleListType()"
+        />
+        <label>Ordered?</label>
+      </div>
       <div v-if="snippetActive">
         <IdField
           :source="context"
@@ -50,6 +59,15 @@
         />
       </div>
     </bubble-menu>
+    <floating-menu
+      v-if="editor"
+      :editor="editor"
+      class="menu-box"
+    >
+      <button @click="addBulletList()">
+        <ListIcon size="1x"/>
+      </button>
+    </floating-menu>
   </div>
 </template>
 
@@ -60,6 +78,7 @@ import {
   EditorContent,
   JSONContent,
   BubbleMenu,
+  FloatingMenu,
 } from '@tiptap/vue-2'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -67,6 +86,7 @@ import {
   CropIcon,
   LinkIcon,
   TagIcon,
+  ListIcon,
 } from 'vue-feather-icons'
 import { isEqual } from 'lodash'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
@@ -80,11 +100,13 @@ import LinkEditor from '@/components/LinkEditor.vue'
   components: {
     EditorContent,
     BubbleMenu,
+    FloatingMenu,
     IdField,
     CropIcon,
     LinkIcon,
     LinkEditor,
     TagIcon,
+    ListIcon,
   }
 })
 export default class HypertextBlock extends Vue {
@@ -124,6 +146,26 @@ export default class HypertextBlock extends Vue {
       });
     }
   });
+
+  get inBulletList(): boolean {
+    return this.editor.isActive('bulletList');
+  }
+
+  addBulletList(): void {
+    this.editor.chain().focus().toggleBulletList().run();
+  }
+
+  get inOrderedList(): boolean {
+    return this.editor.isActive('orderedList');
+  }
+
+  toggleListType(): void {
+    if(this.inBulletList) {
+      this.editor.chain().focus().toggleBulletList().toggleOrderedList().run();
+    } else {
+      this.editor.chain().focus().toggleOrderedList().toggleBulletList().run();
+    }
+  }
 
   get textClasses(): string {
     return this.editor.getAttributes('textClass').class;

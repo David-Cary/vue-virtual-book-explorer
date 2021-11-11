@@ -55,4 +55,8 @@ export default class ModalLayer extends Vue {
   display flex
 .modal-title-bar
   width -webkit-fill-available
+.modal-body
+  max-height 800px
+  max-width 800px
+  overflow scroll
 </style>
