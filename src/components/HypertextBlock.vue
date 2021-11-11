@@ -34,6 +34,15 @@
         />
       </div>
       <div>
+        <TagIcon size="1x"/>
+        <input
+          type="text"
+          placeholder="classes"
+          :value="textClasses"
+          @change="setTextClasses($event.target.value)"
+        />
+      </div>
+      <div>
         <LinkEditor
           v-if="linkActive"
           :editor="editor"
@@ -57,11 +66,13 @@ import Link from '@tiptap/extension-link'
 import {
   CropIcon,
   LinkIcon,
+  TagIcon,
 } from 'vue-feather-icons'
 import { isEqual } from 'lodash'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import VirtualBook from '@/classes/VirtualBook'
-import { Snippet } from'@/schema/Snippet'
+import { Snippet } from '@/schema/Snippet'
+import { TextClass } from '@/schema/TextClass'
 import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
 
@@ -73,6 +84,7 @@ import LinkEditor from '@/components/LinkEditor.vue'
     CropIcon,
     LinkIcon,
     LinkEditor,
+    TagIcon,
   }
 })
 export default class HypertextBlock extends Vue {
@@ -102,6 +114,7 @@ export default class HypertextBlock extends Vue {
       StarterKit,
       Link,
       Snippet,
+      TextClass,
     ],
     onUpdate: () => {
       const doc = this.editor.getJSON();
@@ -111,6 +124,27 @@ export default class HypertextBlock extends Vue {
       });
     }
   });
+
+  get textClasses(): string {
+    return this.editor.getAttributes('textClass').class;
+  }
+
+  setTextClasses(value: string): void {
+    if(value) {
+      this.editor
+        .chain()
+        .focus()
+        .setMark('textClass')
+        .updateAttributes('textClass', { class: value })
+        .run();
+    } else {
+      this.editor
+        .chain()
+        .focus()
+        .unsetMark('textClass')
+        .run();
+    }
+  }
 
   get linkActive(): boolean {
     return this.editor.isActive('link');
