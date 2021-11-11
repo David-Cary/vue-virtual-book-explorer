@@ -4,6 +4,7 @@
       v-if="model"
       class="vbook-explorer-body"
     >
+      <ScopedStyleRenderer :rules="model.style"/>
       <TableOfContents
         :model="model"
         :editable="true"
@@ -14,27 +15,32 @@
         v-if="targetContent"
         class="vbook-explorer-content-pane"
       >
-        <VirtualBookSectionRenderer
-          v-if="targetContent.value.sections"
-          :source="model"
-          :path="targetContent.path"
-          :value="targetContent.value"
-          :editable="true"
-          @change="$emit('change', $event)"
-        />
-        <HypertextBlock
-          v-else
-          :context="model"
-          :content="[targetContent.value]"
-          :editable="true"
-          placeholder="Target Content"
-          @change="onContentChange($event)"
-        />
+        <div class="vbook-body">
+          <VirtualBookSectionRenderer
+            v-if="targetContent.value.sections"
+            :source="model"
+            :path="targetContent.path"
+            :value="targetContent.value"
+            :editable="true"
+            @change="$emit('change', $event)"
+          />
+          <HypertextBlock
+            v-else
+            :context="model"
+            :content="[targetContent.value]"
+            :editable="true"
+            placeholder="Target Content"
+            @change="onContentChange($event)"
+          />
+        </div>
       </div>
       <div v-else>Content Not Found</div>
     </div>
     <div v-else>Book Not Found</div>
     <div>
+      <button @click="showingStyle = true">
+        <em>CSS</em>
+      </button>
       <button @click="onClickRevert()">
         <Trash2Icon size="1x"/>
       </button>
@@ -44,6 +50,17 @@
       />
       <VirtualBookImporter @complete="onImportReady($event)"/>
     </div>
+    <ModalLayer
+      v-if="showingStyle"
+      @close="showingStyle = false"
+    >
+      <template v-slot:header>Style Rules</template>
+      <StyleEditor
+        :value="model.style"
+        :suggestedSelectors="suggestedSelectors"
+        @change="onStyleChange($event)"
+      />
+    </ModalLayer>
     <ModalLayer
       v-if="previewHTML"
       @close="previewHTML = ''"
@@ -61,6 +78,7 @@ import { Trash2Icon } from 'vue-feather-icons'
 import VirtualBook, {
   VirtualBookContentSearchCriteria,
   VirtualBookContentReference,
+  PathStep,
 } from '@/classes/VirtualBook'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
@@ -70,6 +88,8 @@ import TableOfContents from '@/components/TableOfContents.vue'
 import VirtualBookExporter from '@/components/VirtualBookExporter.vue'
 import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
 import ModalLayer from '@/components/ModalLayer.vue'
+import ScopedStyleRenderer from '@/components/ScopedStyleRenderer.vue'
+import StyleEditor from '@/components/StyleEditor.vue'
 
 @Component ({
   components: {
@@ -80,12 +100,22 @@ import ModalLayer from '@/components/ModalLayer.vue'
     VirtualBookExporter,
     VirtualBookImporter,
     ModalLayer,
+    ScopedStyleRenderer,
+    StyleEditor,
   }
 })
 export default class VirtualBookExplorer extends Vue {
   @Prop() model?: VirtualBook;
   @Prop() contentCriteria?: VirtualBookContentSearchCriteria;
   @Prop() sectionPath?: number[];
+
+  showingStyle = false;
+  suggestedSelectors = [
+    'p',
+    'a',
+    '.vbook-body',
+    '.vbook-section',
+  ];
 
   previewHTML = '';
 
@@ -135,6 +165,21 @@ export default class VirtualBookExplorer extends Vue {
       request.path = this.path.concat('content');
     }*/
     //this.$emit('change', request);
+  }
+
+  onStyleChange(change: ValueChangeDescription<unknown>): void {
+    let path: PathStep[] = ['style'];
+    if(change.path) {
+      path = path.concat(change.path);
+    }
+    this.$emit(
+      'change',
+      new SetValueRequest({
+        value: change.value,
+        previousValue: change.previousValue,
+        path
+      })
+    );
   }
 }
 </script>

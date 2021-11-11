@@ -13,6 +13,10 @@ export type PathStep = string | number;
 
 export type ValueMap = {[k: string]: unknown};
 
+export type StringMap = {[k: string]: string};
+
+export type StyleRuleMap = {[k: string]: StringMap};
+
 export interface VirtualBookContentSearchCriteria {
   id?: string;
   path?: PathStep[];
@@ -31,6 +35,7 @@ export type VirtualBookContentCallback = (
 ) => boolean | void;
 
 export default class VirtualBook {
+  style: StyleRuleMap = {};
   sections: VirtualBookSection[] = [];
 
   static getPathToSection(

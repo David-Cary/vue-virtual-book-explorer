@@ -3,11 +3,10 @@
     <div class="modal-background"/>
     <div class="modal-pane">
       <div class="modal-header">
-        <slot name="header"/>
-        <button
-          class="close-button"
-          @click="$emit('close')"
-        >
+        <span class="modal-title-bar">
+          <slot name="header"/>
+        </span>
+        <button @click="$emit('close')">
           <XIcon size="1x"/>
         </button>
       </div>
@@ -52,7 +51,8 @@ export default class ModalLayer extends Vue {
   left 0px
   background-color white
   border 4px solid gray
-.close-button
-  float right
-  margin-left 8px
+.modal-header
+  display flex
+.modal-title-bar
+  width -webkit-fill-available
 </style>

@@ -2,7 +2,7 @@ import Vue from 'vue'
 import Vuex from 'vuex'
 import VuexPersistence from 'vuex-persist'
 import VirtualBook from '@/classes/VirtualBook'
-import ObjectEditorEngine from '@/classes/ObjectEditorEngine'
+import VueObjectEditorEngine from '@/classes/VueObjectEditorEngine'
 
 Vue.use(Vuex)
 
@@ -24,7 +24,7 @@ const vuexSession = new VuexPersistence({
   })
 });
 
-const opEngine = new ObjectEditorEngine();
+const opEngine = new VueObjectEditorEngine();
 
 export default new Vuex.Store({
   state: {

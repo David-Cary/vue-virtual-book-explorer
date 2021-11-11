@@ -1,15 +1,15 @@
 import OperationEngine, { OperationRequest, OperationHandler } from '@/classes/OperationEngine'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 
-export type ValueMap = {[k: string]: unknown};
+export type PathStep = (string | number);
 
-export type ValuePath = (string | number)[];
+export type ValueMap = {[k in PathStep]: unknown};
 
 export class SetValueRequest<T> implements OperationRequest {
   type = 'set';
   value?: T;
   previousValue?: T;
-  path?: ValuePath;
+  path?: PathStep[];
 
   constructor(change?: ValueChangeDescription<T>) {
     if(change) {
@@ -66,10 +66,10 @@ export class SetValueRequest<T> implements OperationRequest {
 
 export class InsertValueRequest<T> implements OperationRequest {
   type = 'insert';
-  path?: ValuePath;
+  path?: PathStep[];
   value?: T;
 
-  constructor(path?: ValuePath, value?: T) {
+  constructor(path?: PathStep[], value?: T) {
     this.path = path;
     this.value = value;
   }
@@ -111,10 +111,10 @@ export class InsertValueRequest<T> implements OperationRequest {
 
 export class DeleteValueRequest<T> implements OperationRequest {
   type = 'delete';
-  path?: ValuePath;
+  path?: PathStep[];
   value?: T;
 
-  constructor(path?: ValuePath, value?: T) {
+  constructor(path?: PathStep[], value?: T) {
     this.path = path;
     this.value = value;
   }
@@ -133,13 +133,13 @@ export default class ObjectEditorEngine extends OperationEngine<unknown> {
   constructor() {
     super();
     this.handlers = {
-      delete: DeleteValueRequest.defaultHandler,
-      insert: InsertValueRequest.defaultHandler,
-      set: SetValueRequest.defaultHandler,
+      delete: { ...DeleteValueRequest.defaultHandler},
+      insert: { ...InsertValueRequest.defaultHandler},
+      set: { ...SetValueRequest.defaultHandler},
     };
   }
 
-  static getValueOwner(source: unknown, path: ValuePath): ValueMap | undefined {
+  static getValueOwner(source: unknown, path: PathStep[]): ValueMap | undefined {
     if(typeof source === 'object') {
       let target = source as ValueMap;
       const maxIndex = path.length - 2;

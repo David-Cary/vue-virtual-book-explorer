@@ -22,12 +22,19 @@ import { OperationRequest } from '@/classes/OperationEngine'
 export default class BookExplorerView extends Vue {
   @Prop() contentCriteria?: VirtualBookContentSearchCriteria;
 
-  get book(): VirtualBook {
-    return this.$store.state.book;
+  book?: VirtualBook;
+
+  refreshBook(): void {
+    this.book = this.$store.state.book;
+  }
+
+  created(): void {
+    this.refreshBook();
   }
 
   onChangeRequest(request: OperationRequest): void {
     this.$store.commit('updateBook', request);
+    this.refreshBook();
   }
 }
 </script>
