@@ -67,6 +67,12 @@
       <button @click="addBulletList()">
         <ListIcon size="1x"/>
       </button>
+      <button
+        :class="{ 'active-tag-button': inTextBlock }"
+        @click="toggleTextBlock()"
+      >
+        <MenuIcon size="1x"/>
+      </button>
     </floating-menu>
   </div>
 </template>
@@ -87,11 +93,13 @@ import {
   LinkIcon,
   TagIcon,
   ListIcon,
+  MenuIcon,
 } from 'vue-feather-icons'
 import { isEqual } from 'lodash'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import VirtualBook from '@/classes/VirtualBook'
 import { Snippet } from '@/schema/Snippet'
+import { TextBlock } from '@/schema/TextBlock'
 import { TextClass } from '@/schema/TextClass'
 import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
@@ -107,6 +115,7 @@ import LinkEditor from '@/components/LinkEditor.vue'
     LinkEditor,
     TagIcon,
     ListIcon,
+    MenuIcon,
   }
 })
 export default class HypertextBlock extends Vue {
@@ -136,6 +145,7 @@ export default class HypertextBlock extends Vue {
       StarterKit,
       Link,
       Snippet,
+      TextBlock,
       TextClass,
     ],
     onUpdate: () => {
@@ -164,6 +174,18 @@ export default class HypertextBlock extends Vue {
       this.editor.chain().focus().toggleBulletList().toggleOrderedList().run();
     } else {
       this.editor.chain().focus().toggleOrderedList().toggleBulletList().run();
+    }
+  }
+
+  get inTextBlock(): boolean {
+    return this.editor.isActive('textBlock');
+  }
+
+  toggleTextBlock(): void {
+    if(this.inTextBlock) {
+      this.editor.chain().focus().setNode('paragraph').run();
+    } else {
+      this.editor.chain().focus().setTextBlock().run();
     }
   }
 
