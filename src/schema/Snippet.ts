@@ -27,7 +27,6 @@ export const Snippet = Node.create<SnippetOptions>({
 
   addOptions() {
     return {
-      inline: true,
       HTMLAttributes: {},
     }
   },

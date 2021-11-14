@@ -1,5 +1,5 @@
 <template>
-  <HypertextBlock
+  <HypertextContentEditor
     :context="context"
     :content="wrappedContent"
     :editable="editable"
@@ -13,11 +13,11 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 import { JSONContent } from '@tiptap/vue-2'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import VirtualBook from '@/classes/VirtualBook'
-import HypertextBlock from '@/components/HypertextBlock.vue'
+import HypertextContentEditor from '@/components/HypertextContentEditor.vue'
 
 @Component ({
   components: {
-    HypertextBlock,
+    HypertextContentEditor,
   },
 })
 export default class HypertextNodeEditor extends Vue {

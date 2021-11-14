@@ -17,7 +17,7 @@
       placeholder="Section Title"
       @change="onTitleChange($event)"
     />
-    <HypertextBlock
+    <HypertextContentEditor
       :context="source"
       :content="value.content"
       :editable="editable"
@@ -86,14 +86,14 @@ import { SetValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEngin
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import IdField from '@/components/IdField.vue'
 import TextRenderer from '@/components/TextRenderer.vue'
-import HypertextBlock from '@/components/HypertextBlock.vue'
+import HypertextContentEditor from '@/components/HypertextContentEditor.vue'
 import VirtualBookSectionInjector from '@/components/VirtualBookSectionInjector.vue'
 
 @Component ({
   components: {
     TextRenderer,
     IdField,
-    HypertextBlock,
+    HypertextContentEditor,
     VirtualBookSectionInjector,
     FolderMinusIcon,
     CopyIcon,

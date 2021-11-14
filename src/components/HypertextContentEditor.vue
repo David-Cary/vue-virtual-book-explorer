@@ -24,6 +24,29 @@
         >
           <CropIcon size="1x"/>
         </button>
+        <button @click="toggleBulletList()">
+          <ListIcon size="1x"/>
+        </button>
+        <button
+          :class="{ 'active-tag-button': inTextBlock }"
+          @click="toggleTextBlock()"
+        >
+          <MenuIcon size="1x"/>
+        </button>
+        <button
+          :class="{ 'active-tag-button': inTopicBlock }"
+          @click="toggleTopicBlock()"
+        >
+          <LayoutIcon size="1x"/>
+        </button>
+      </div>
+      <div v-if="inTopicBlock">
+        <IdField
+          :source="context"
+          :value="topicId"
+          placeholder="Topic Id"
+          @change="onTopicIdChange($event)"
+        />
       </div>
       <div v-if="inBulletList | inOrderedList">
         <ListIcon size="1x"/>
@@ -59,21 +82,6 @@
         />
       </div>
     </bubble-menu>
-    <floating-menu
-      v-if="editor"
-      :editor="editor"
-      class="menu-box"
-    >
-      <button @click="addBulletList()">
-        <ListIcon size="1x"/>
-      </button>
-      <button
-        :class="{ 'active-tag-button': inTextBlock }"
-        @click="toggleTextBlock()"
-      >
-        <MenuIcon size="1x"/>
-      </button>
-    </floating-menu>
   </div>
 </template>
 
@@ -84,7 +92,6 @@ import {
   EditorContent,
   JSONContent,
   BubbleMenu,
-  FloatingMenu,
 } from '@tiptap/vue-2'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -94,6 +101,7 @@ import {
   TagIcon,
   ListIcon,
   MenuIcon,
+  LayoutIcon,
 } from 'vue-feather-icons'
 import { isEqual } from 'lodash'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
@@ -101,6 +109,7 @@ import VirtualBook from '@/classes/VirtualBook'
 import { Snippet } from '@/schema/Snippet'
 import { TextBlock } from '@/schema/TextBlock'
 import { TextClass } from '@/schema/TextClass'
+import { TopicBlock } from '@/schema/TopicBlock'
 import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
 
@@ -108,7 +117,6 @@ import LinkEditor from '@/components/LinkEditor.vue'
   components: {
     EditorContent,
     BubbleMenu,
-    FloatingMenu,
     IdField,
     CropIcon,
     LinkIcon,
@@ -116,9 +124,10 @@ import LinkEditor from '@/components/LinkEditor.vue'
     TagIcon,
     ListIcon,
     MenuIcon,
+    LayoutIcon,
   }
 })
-export default class HypertextBlock extends Vue {
+export default class HypertextContentEditor extends Vue {
   @Prop() context?: VirtualBook;
   @Prop() editable?: boolean;
   @Watch('editable', { immediate: true })
@@ -147,6 +156,7 @@ export default class HypertextBlock extends Vue {
       Snippet,
       TextBlock,
       TextClass,
+      TopicBlock,
     ],
     onUpdate: () => {
       const doc = this.editor.getJSON();
@@ -161,7 +171,7 @@ export default class HypertextBlock extends Vue {
     return this.editor.isActive('bulletList');
   }
 
-  addBulletList(): void {
+  toggleBulletList(): void {
     this.editor.chain().focus().toggleBulletList().run();
   }
 
@@ -264,6 +274,26 @@ export default class HypertextBlock extends Vue {
       .chain()
       .focus()
       .updateAttributes('snippet', { id: change.value })
+      .run();
+  }
+
+  get inTopicBlock(): boolean {
+    return this.editor.isActive('topicBlock');
+  }
+
+  toggleTopicBlock(): void {
+    this.editor.chain().focus().toggleTopicBlock().run();
+  }
+
+  get topicId(): string {
+    return this.editor.getAttributes('topicBlock').id;
+  }
+
+  onTopicIdChange(change: ValueChangeDescription<string>): void {
+    this.editor
+      .chain()
+      .focus()
+      .updateAttributes('topicBlock', { id: change.value })
       .run();
   }
 
