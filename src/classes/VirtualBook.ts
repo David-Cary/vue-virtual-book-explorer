@@ -5,6 +5,7 @@ export class VirtualBookSection {
   title = '';
   content: JSONContent[] = [];
   sections: VirtualBookSection[] = [];
+  sectionDisplay?: string;
 }
 
 export type VirtualBookContent = VirtualBookSection | JSONContent;

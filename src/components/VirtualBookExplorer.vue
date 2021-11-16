@@ -8,7 +8,6 @@ HypertextNodeEditor<template>
       <TableOfContents
         :model="model"
         :editable="true"
-        :baseURL="sectionByIndicesURL"
         @change="$emit('change', $event)"
       />
       <div
@@ -124,15 +123,6 @@ export default class VirtualBookExplorer extends Vue {
       return VirtualBook.findContent(this.model, this.contentCriteria);
     }
     return null;
-  }
-
-  get sectionByIndicesURL(): string {
-    const routes = this.$router.getRoutes();
-    const route = routes.find(route => route.name === 'Show Section By Indices');
-    if(route) {
-      return `#${route.path.replace('/*', '')}`;
-    }
-    return '';
   }
 
   onClickRevert(): void {

@@ -13,7 +13,10 @@
       </div>
       <div v-else>&nbsp;</div>
       <div>
-        <a :href="sectionURL">{{activeTitle}}</a>
+        <VirtualBookContentLink
+          :target="model"
+          :path="path"
+        />
       </div>
     </div>
     <div v-if="isOpen">
@@ -22,8 +25,8 @@
         :key="index"
         class="vbook-table-of-contents-subsections"
         :model="section"
+        :basePath="path"
         :index="index"
-        :baseURL="sectionURL"
       />
     </div>
   </div>
@@ -33,50 +36,29 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { ChevronRightIcon, ChevronDownIcon } from 'vue-feather-icons'
-import { VirtualBookSection } from '@/classes/VirtualBook'
-import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.vue'
+import { VirtualBookSection, PathStep } from '@/classes/VirtualBook'
+import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
 
 @Component ({
   components: {
     ChevronDownIcon,
     ChevronRightIcon,
-    VirtualBookSectionRenderer,
+    VirtualBookContentLink,
   }
 })
 export default class TableOfContentsSection extends Vue {
   @Prop() model?: VirtualBookSection;
+  @Prop() basePath?: PathStep[];
   @Prop() index?: number;
-  @Prop() baseURL?: string;
 
   isOpen = false;
 
-  get activeTitle(): string {
-    if(this.model?.title) {
-      return this.model.title;
-    }
+  get path(): PathStep[] {
+    const base: PathStep[] = this.basePath ? this.basePath : [];
     if(this.index !== undefined) {
-      return `Section ${this.index + 1}`;
+      return base.concat('sections', this.index);
     }
-    return '';
-  }
-
-  get sectionByIdURL(): string {
-    const routes = this.$router.getRoutes();
-    const route = routes.find(route => route.name === 'Show Content By Id');
-    if(route) {
-      return `#${route.path}`;
-    }
-    return '';
-  }
-
-  get sectionURL(): string {
-    if(this.sectionByIdURL && this.model && this.model.id) {
-      return this.sectionByIdURL.replace(':content_id', this.model.id);
-    }
-    if(this.baseURL) {
-      return `${this.baseURL}/${this.index}`;
-    }
-    return '';
+    return base;
   }
 }
 </script>

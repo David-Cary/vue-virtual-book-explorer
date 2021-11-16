@@ -35,7 +35,7 @@ export default class VirtualBookSectionInjector extends Vue {
 
   get copiedSection(): VirtualBookSection | undefined {
     const value = this.$store.state.clipboard?.source;
-    if(typeof value === 'object' && value?.contents) {
+    if(typeof value === 'object' && value?.content) {
       return value as VirtualBookSection;
     }
     return undefined;
