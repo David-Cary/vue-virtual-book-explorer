@@ -39,6 +39,12 @@
         >
           <LayoutIcon size="1x"/>
         </button>
+        <button
+          :class="{ 'active-tag-button': selectionNamed }"
+          @click="toggleName()"
+        >
+          <Edit3Icon size="1x"/>
+        </button>
       </div>
       <div v-if="inTopicBlock">
         <IdField
@@ -63,6 +69,15 @@
           :value="snippetId"
           placeholder="Snippet Id"
           @change="onSnippetIdChange($event)"
+        />
+      </div>
+      <div v-if="selectionNamed">
+        <Edit3Icon size="1x"/>
+        <input
+          type="text"
+          placeholder="name"
+          :value="selectionName"
+          @change="setName($event.target.value)"
         />
       </div>
       <div>
@@ -102,6 +117,7 @@ import {
   ListIcon,
   MenuIcon,
   LayoutIcon,
+  Edit3Icon,
 } from 'vue-feather-icons'
 import { isEqual } from 'lodash'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
@@ -110,6 +126,7 @@ import { Snippet } from '@/schema/Snippet'
 import { TextBlock } from '@/schema/TextBlock'
 import { TextClass } from '@/schema/TextClass'
 import { TopicBlock } from '@/schema/TopicBlock'
+import { TextName } from '@/schema/TextName'
 import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
 
@@ -125,6 +142,7 @@ import LinkEditor from '@/components/LinkEditor.vue'
     ListIcon,
     MenuIcon,
     LayoutIcon,
+    Edit3Icon,
   }
 })
 export default class HypertextContentEditor extends Vue {
@@ -157,6 +175,7 @@ export default class HypertextContentEditor extends Vue {
       TextBlock,
       TextClass,
       TopicBlock,
+      TextName,
     ],
     onUpdate: () => {
       const doc = this.editor.getJSON();
@@ -294,6 +313,38 @@ export default class HypertextContentEditor extends Vue {
       .chain()
       .focus()
       .updateAttributes('topicBlock', { id: change.value })
+      .run();
+  }
+
+  get selectionNamed(): boolean {
+    return this.editor.isActive('textName');
+  }
+
+  get selectionName(): string {
+    return this.editor.getAttributes('textName').name;
+  }
+
+  toggleName(): void {
+    if(this.selectionNamed) {
+      this.editor
+        .chain()
+        .focus()
+        .unsetMark('textName')
+        .run();
+    } else {
+      this.editor
+        .chain()
+        .focus()
+        .setMark('textName')
+        .run();
+    }
+  }
+
+  setName(value: string): void {
+    this.editor
+      .chain()
+      .focus()
+      .updateAttributes('textName', { name: value })
       .run();
   }
 
