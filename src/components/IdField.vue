@@ -29,18 +29,23 @@ export default class IdField extends Vue {
   errorClass = '';
 
   onInput(field: HTMLInputElement): void {
-    this.errorClass = field.value.match(/^([a-z]|[A-Z])/) ? '' : 'invalid-id';
-    if(this.source && field.value !== this.value) {
-      const match = VirtualBook.findContent(
-        this.source,
-        {
-          id: field.value
+    if(field.value) {
+      if(field.value.match(/^([a-z]|[A-Z])/)) {
+        this.errorClass = 'invalid-id';
+      } else if(this.source && field.value !== this.value) {
+        const match = VirtualBook.findContent(
+          this.source,
+          {
+            id: field.value
+          }
+        );
+        if(match) {
+          this.errorClass = 'duplicate-id';
         }
-      );
-      if(match) {
-        this.errorClass = 'duplicate-id';
       }
     }
+
+    console.log(field.value, ":", this.errorClass)
   }
 
   onInputComplete(): void {
