@@ -26,7 +26,10 @@
           placeholder="property"
           v-model="pendingPropertyName"
         />
-        <button @click="onNewDeclaration()">
+        <button
+          v-if="pendingPropertyName"
+          @click="onNewDeclaration()"
+        >
           <PlusIcon size="1x"/>
         </button>
       </div>

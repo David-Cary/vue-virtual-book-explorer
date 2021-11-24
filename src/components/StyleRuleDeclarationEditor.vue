@@ -51,10 +51,10 @@ export default class StyleRuleDeclarationEditor extends Vue {
   onChangeValue(input: HTMLInputElement): void {
     const targetValue = input.value;
     if(targetValue !== this.value) {
-      if(this.context) {
+      if(this.context && this.name) {
         this.$emit('change', {
           value: targetValue,
-          path: this.name ? [this.name] : [],
+          path: [this.name],
         });
       } else {
         input.value = this.value ? this.value : '';
@@ -65,7 +65,7 @@ export default class StyleRuleDeclarationEditor extends Vue {
   onRemoveDeclaration(): void {
     this.$emit('change', {
       previousValue: this.value,
-      path: this.name ? [this.name] : [],
+      path: this.name ? [this.name] : [''],
     });
   }
 }
