@@ -46,12 +46,22 @@
           <Edit3Icon size="1x"/>
         </button>
       </div>
-      <div v-if="inTopicBlock">
-        <IdField
-          :source="context"
-          :value="topicId"
-          placeholder="Topic Id"
-          @change="onTopicIdChange($event)"
+      <div v-if="inTopicBlock" class="flex-row">
+        <LayoutIcon size="1x"/>
+        <NamedBlockEditor
+          :context="context"
+          :editor="editor"
+          typeName="topicBlock"
+          typeLabel="Topic"
+        />
+      </div>
+      <div v-if="inTextBlock" class="flex-row">
+        <MenuIcon size="1x"/>
+        <NamedBlockEditor
+          :context="context"
+          :editor="editor"
+          typeName="textBlock"
+          typeLabel="Text Block"
         />
       </div>
       <div v-if="inBulletList | inOrderedList">
@@ -84,7 +94,7 @@
         <TagIcon size="1x"/>
         <input
           type="text"
-          placeholder="classes"
+          placeholder="text classes"
           :value="textClasses"
           @change="setTextClasses($event.target.value)"
         />
@@ -129,6 +139,7 @@ import { TopicBlock } from '@/schema/TopicBlock'
 import { TextName } from '@/schema/TextName'
 import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
+import NamedBlockEditor from '@/components/NamedBlockEditor.vue'
 
 @Component ({
   components: {
@@ -138,6 +149,7 @@ import LinkEditor from '@/components/LinkEditor.vue'
     CropIcon,
     LinkIcon,
     LinkEditor,
+    NamedBlockEditor,
     TagIcon,
     ListIcon,
     MenuIcon,
@@ -304,18 +316,6 @@ export default class HypertextContentEditor extends Vue {
     this.editor.chain().focus().toggleTopicBlock().run();
   }
 
-  get topicId(): string {
-    return this.editor.getAttributes('topicBlock').id;
-  }
-
-  onTopicIdChange(change: ValueChangeDescription<string>): void {
-    this.editor
-      .chain()
-      .focus()
-      .updateAttributes('topicBlock', { id: change.value })
-      .run();
-  }
-
   get selectionNamed(): boolean {
     return this.editor.isActive('textName');
   }
@@ -367,4 +367,6 @@ export default class HypertextContentEditor extends Vue {
   width max-content
 .active-tag-button
   background-color yellow
+.flex-row
+  display flex
 </style>

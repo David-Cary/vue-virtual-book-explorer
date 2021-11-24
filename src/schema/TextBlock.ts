@@ -30,6 +30,20 @@ export const TextBlock = Node.create<TextBlockOptions>({
 
   content: 'inline*',
 
+  addAttributes() {
+    return {
+      id: {
+        default: undefined,
+      },
+      name: {
+        default: undefined,
+      },
+      class: {
+        default: undefined,
+      },
+    }
+  },
+
   parseHTML() {
     return [
       { tag: 'div' },

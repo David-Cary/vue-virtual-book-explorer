@@ -31,14 +31,20 @@ export const TopicBlock = Node.create<TopicBlockOptions>({
   addAttributes() {
     return {
       id: {
-        default: null,
+        default: undefined,
+      },
+      name: {
+        default: undefined,
+      },
+      class: {
+        default: undefined,
       },
     }
   },
 
   parseHTML() {
     return [
-      { tag: 'div[id]' },
+      { tag: 'div' },
     ]
   },
 
