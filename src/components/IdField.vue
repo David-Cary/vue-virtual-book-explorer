@@ -30,7 +30,7 @@ export default class IdField extends Vue {
 
   onInput(field: HTMLInputElement): void {
     if(field.value) {
-      if(field.value.match(/^([a-z]|[A-Z])/)) {
+      if(!field.value.match(/^([a-z]|[A-Z])/)) {
         this.errorClass = 'invalid-id';
       } else if(this.source && field.value !== this.value) {
         const match = VirtualBook.findContent(
@@ -44,8 +44,6 @@ export default class IdField extends Vue {
         }
       }
     }
-
-    console.log(field.value, ":", this.errorClass)
   }
 
   onInputComplete(): void {
