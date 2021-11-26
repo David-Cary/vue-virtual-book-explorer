@@ -29,7 +29,6 @@ export default class IdField extends Vue {
   errorClass = '';
 
   onInput(field: HTMLInputElement): void {
-  console.log({field})
     this.errorClass = '';
     if(field.value) {
       if(!field.value.match(/^([a-z]|[A-Z])/)) {
@@ -42,7 +41,6 @@ export default class IdField extends Vue {
           }
         );
         if(match) {
-        console.log({match})
           this.errorClass = 'duplicate-id';
         }
       }
