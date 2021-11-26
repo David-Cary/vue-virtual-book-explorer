@@ -37,7 +37,7 @@
           :class="{ 'active-tag-button': inTopicBlock }"
           @click="toggleTopicBlock()"
         >
-          <LayoutIcon size="1x"/>
+          <CreditCardIcon size="1x"/>
         </button>
         <button
           :class="{ 'active-tag-button': selectionNamed }"
@@ -46,8 +46,12 @@
           <Edit3Icon size="1x"/>
         </button>
       </div>
+      <div v-if="inTable" class="flex-row">
+        <GridIcon size="1x"/>
+        <TableEditor :editor="editor"/>
+      </div>
       <div v-if="inTopicBlock" class="flex-row">
-        <LayoutIcon size="1x"/>
+        <CreditCardIcon size="1x"/>
         <NamedBlockEditor
           :context="context"
           :editor="editor"
@@ -107,6 +111,15 @@
         />
       </div>
     </bubble-menu>
+    <floating-menu
+      v-if="editor"
+      :editor="editor"
+      class="menu-box"
+    >
+      <button @click="insertTable()">
+        <GridIcon size="1x"/>
+      </button>
+    </floating-menu>
   </div>
 </template>
 
@@ -117,16 +130,22 @@ import {
   EditorContent,
   JSONContent,
   BubbleMenu,
+  FloatingMenu
 } from '@tiptap/vue-2'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
+import Table from '@tiptap/extension-table'
+import TableRow from '@tiptap/extension-table-row'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
 import {
   CropIcon,
   LinkIcon,
   TagIcon,
   ListIcon,
+  GridIcon,
   MenuIcon,
-  LayoutIcon,
+  CreditCardIcon,
   Edit3Icon,
 } from 'vue-feather-icons'
 import { isEqual } from 'lodash'
@@ -139,21 +158,25 @@ import { TopicBlock } from '@/schema/TopicBlock'
 import { TextName } from '@/schema/TextName'
 import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
+import TableEditor from '@/components/TableEditor.vue'
 import NamedBlockEditor from '@/components/NamedBlockEditor.vue'
 
 @Component ({
   components: {
     EditorContent,
     BubbleMenu,
+    FloatingMenu,
     IdField,
     CropIcon,
     LinkIcon,
     LinkEditor,
+    TableEditor,
     NamedBlockEditor,
     TagIcon,
     ListIcon,
+    GridIcon,
     MenuIcon,
-    LayoutIcon,
+    CreditCardIcon,
     Edit3Icon,
   }
 })
@@ -188,6 +211,10 @@ export default class HypertextContentEditor extends Vue {
       TextClass,
       TopicBlock,
       TextName,
+      Table,
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     onUpdate: () => {
       const doc = this.editor.getJSON();
@@ -216,6 +243,14 @@ export default class HypertextContentEditor extends Vue {
     } else {
       this.editor.chain().focus().toggleOrderedList().toggleBulletList().run();
     }
+  }
+
+  get inTable(): boolean {
+    return this.editor.isActive('table');
+  }
+
+  insertTable(): void {
+    this.editor.chain().focus().insertTable().run();
   }
 
   get inTextBlock(): boolean {

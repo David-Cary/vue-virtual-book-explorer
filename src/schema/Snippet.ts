@@ -1,6 +1,7 @@
 import {
   Node,
   mergeAttributes,
+  CommandProps,
 } from '@tiptap/core'
 
 export interface SnippetOptions {
@@ -36,7 +37,6 @@ export const Snippet = Node.create<SnippetOptions>({
   group: 'inline',
 
   content: 'inline+',
-
   draggable: true,
 
   addAttributes() {
@@ -55,7 +55,7 @@ export const Snippet = Node.create<SnippetOptions>({
     ]
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ HTMLAttributes }: {HTMLAttributes: Record<string, unknown>}) {
     return [
       'span',
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
@@ -65,7 +65,7 @@ export const Snippet = Node.create<SnippetOptions>({
 
   addCommands() {
     return {
-      setSnippet: options => ({ tr, commands }) => {
+      setSnippet: (options: Record<string, unknown>) => ({ tr, commands }: CommandProps) => {
         const selection = tr.selection;
         if(!selection.$anchor.sameParent(selection.$head)) {
           return false;
@@ -86,7 +86,7 @@ export const Snippet = Node.create<SnippetOptions>({
         }
         return false;
       },
-      releaseSnippet: () => ({ tr, dispatch }) => {
+      releaseSnippet: () => ({ tr, dispatch }: CommandProps) => {
         const selection = tr.selection;
         if(selection.$anchor.sameParent(selection.$head)) {
           for(let i = selection.$anchor.depth; i >= 0; i--) {

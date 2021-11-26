@@ -112,6 +112,10 @@ export default class VirtualBookExplorer extends Vue {
   suggestedSelectors = [
     'p',
     'a',
+    'table',
+    'th',
+    'tr',
+    'td',
     '.vbook-body',
     '.vbook-section',
   ];

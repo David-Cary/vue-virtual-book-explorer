@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from '@tiptap/core'
+import { Node, mergeAttributes, CommandProps } from '@tiptap/core'
 
 export interface TextBlockOptions {
   HTMLAttributes: Record<string, unknown>,
@@ -50,13 +50,13 @@ export const TextBlock = Node.create<TextBlockOptions>({
     ]
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ HTMLAttributes }: {HTMLAttributes: Record<string, unknown>}) {
     return ['div', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0]
   },
 
   addCommands() {
     return {
-      setTextBlock: () => ({ commands }) => {
+      setTextBlock: () => ({ commands }: CommandProps) => {
         return commands.setNode('textBlock')
       },
     }

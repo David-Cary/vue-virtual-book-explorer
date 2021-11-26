@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from '@tiptap/core'
+import { Node, mergeAttributes, CommandProps } from '@tiptap/core'
 
 export interface TopicBlockOptions {
   HTMLAttributes: Record<string, unknown>,
@@ -48,13 +48,13 @@ export const TopicBlock = Node.create<TopicBlockOptions>({
     ]
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ HTMLAttributes }: {HTMLAttributes: Record<string, unknown>}) {
     return ['div', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0]
   },
 
   addCommands() {
     return {
-      toggleTopicBlock: () => ({ commands }) => {
+      toggleTopicBlock: () => ({ commands }: CommandProps) => {
         return commands.toggleList('topicBlock', 'paragraph')
       },
     }
