@@ -44,12 +44,20 @@ export const TopicBlock = Node.create<TopicBlockOptions>({
 
   parseHTML() {
     return [
-      { tag: 'div' },
+      { tag: 'div[data-type="topic"]' },
     ]
   },
 
   renderHTML({ HTMLAttributes }: {HTMLAttributes: Record<string, unknown>}) {
-    return ['div', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0]
+    return [
+      'div',
+      mergeAttributes(
+        this.options.HTMLAttributes,
+        HTMLAttributes,
+        { 'data-type': 'topic' }
+      ),
+      0
+    ];
   },
 
   addCommands() {
