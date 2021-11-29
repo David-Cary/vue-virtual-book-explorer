@@ -71,14 +71,14 @@ export const Snippet = Node.create<SnippetOptions>({
           return false;
         }
         const { from, to } = selection;
-        const selectionFragment = tr.doc.cut(from, to);
-        const selectionBlock = selectionFragment.firstChild;
-        if(selectionBlock) {
-          const blockJSON = selectionBlock.toJSON();
+        const slice = tr.doc.slice(from, to);
+        const sliceJSON = slice.toJSON();
+        if(sliceJSON) {
+          tr.doc.cut(from, to);
           const inserted = commands.insertContent({
             type: this.name,
             attrs: options,
-            content: blockJSON.content,
+            content: sliceJSON.content,
           });
           if(inserted) {
             return commands.setTextSelection({ from: from + 1, to: to + 1});
