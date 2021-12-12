@@ -28,6 +28,12 @@
           <ListIcon size="1x"/>
         </button>
         <button
+          v-if="!inTable"
+          @click="insertTable()"
+        >
+          <GridIcon size="1x"/>
+        </button>
+        <button
           :class="{ 'active-tag-button': inTextBlock }"
           @click="toggleTextBlock()"
         >
