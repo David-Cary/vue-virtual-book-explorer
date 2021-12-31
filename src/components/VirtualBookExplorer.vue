@@ -1,4 +1,4 @@
-HypertextNodeEditor<template>
+<template>
   <div>
     <div
       v-if="model"
@@ -14,6 +14,9 @@ HypertextNodeEditor<template>
         v-if="targetContent"
         class="vbook-explorer-content-pane"
       >
+        <div>
+          <BreadcrumbLinks :reference="targetContent"/>
+        </div>
         <div class="vbook-body">
           <VirtualBookSectionRenderer
             v-if="targetContent.value.sections"
@@ -99,6 +102,7 @@ import { SetValueRequest } from '@/classes/ObjectEditorEngine'
 import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.vue'
 import HypertextNodeEditor from '@/components/HypertextNodeEditor.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
+import BreadcrumbLinks from '@/components/BreadcrumbLinks.vue'
 import VirtualBookExporter from '@/components/VirtualBookExporter.vue'
 import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
 import ModalLayer from '@/components/ModalLayer.vue'
@@ -110,6 +114,7 @@ import StyleEditor from '@/components/StyleEditor.vue'
     VirtualBookSectionRenderer,
     HypertextNodeEditor,
     TableOfContents,
+    BreadcrumbLinks,
     EditIcon,
     Trash2Icon,
     CodeIcon,
@@ -123,7 +128,6 @@ import StyleEditor from '@/components/StyleEditor.vue'
 export default class VirtualBookExplorer extends Vue {
   @Prop() model?: VirtualBook;
   @Prop() contentCriteria?: VirtualBookContentSearchCriteria;
-  @Prop() sectionPath?: number[];
 
   editing = false;
   showingStyle = false;
