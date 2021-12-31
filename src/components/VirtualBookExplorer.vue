@@ -7,7 +7,7 @@ HypertextNodeEditor<template>
       <ScopedStyleRenderer :rules="model.style"/>
       <TableOfContents
         :model="model"
-        :editable="true"
+        :editable="editing"
         @change="$emit('change', $event)"
       />
       <div
@@ -20,14 +20,14 @@ HypertextNodeEditor<template>
             :source="model"
             :path="targetContent.path"
             :value="targetContent.value"
-            :editable="true"
+            :editable="editing"
             @change="$emit('change', $event)"
           />
           <HypertextNodeEditor
             v-else
             :context="model"
             :content="targetContent.value"
-            :editable="true"
+            :editable="editing"
             placeholder="Target Content"
             @change="onContentChange($event)"
           />
@@ -37,17 +37,32 @@ HypertextNodeEditor<template>
     </div>
     <div v-else>Book Not Found</div>
     <div>
-      <button @click="showingStyle = true">
-        <em>CSS</em>
+      <button
+        :class="{ 'active-button': editing }"
+        @click="editing = !editing"
+      >
+        <EditIcon size="1x"/>
       </button>
-      <button @click="onClickRevert()">
+      <button
+        v-if="editing"
+        @click="showingStyle = true"
+      >
+        <CodeIcon size="1x"/>
+      </button>
+      <button
+        v-if="editing"
+        @click="onClickRevert()"
+      >
         <Trash2Icon size="1x"/>
       </button>
       <VirtualBookExporter
         :model="model"
         @showPreview="previewHTML = $event.value"
       />
-      <VirtualBookImporter @complete="onImportReady($event)"/>
+      <VirtualBookImporter
+        v-if="editing"
+        @complete="onImportReady($event)"
+      />
     </div>
     <ModalLayer
       v-if="showingStyle"
@@ -73,7 +88,7 @@ HypertextNodeEditor<template>
 <script lang="ts">
 import { VNode } from 'vue'
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { Trash2Icon } from 'vue-feather-icons'
+import { EditIcon, Trash2Icon, CodeIcon } from 'vue-feather-icons'
 import VirtualBook, {
   VirtualBookContentSearchCriteria,
   VirtualBookContentReference,
@@ -95,7 +110,9 @@ import StyleEditor from '@/components/StyleEditor.vue'
     VirtualBookSectionRenderer,
     HypertextNodeEditor,
     TableOfContents,
+    EditIcon,
     Trash2Icon,
+    CodeIcon,
     VirtualBookExporter,
     VirtualBookImporter,
     ModalLayer,
@@ -108,6 +125,7 @@ export default class VirtualBookExplorer extends Vue {
   @Prop() contentCriteria?: VirtualBookContentSearchCriteria;
   @Prop() sectionPath?: number[];
 
+  editing = false;
   showingStyle = false;
   suggestedSelectors = [
     'p',
@@ -182,4 +200,6 @@ export default class VirtualBookExplorer extends Vue {
   display flex
 .vbook-explorer-content-pane
   width -webkit-fill-available
+.active-button
+  background-color yellow
 </style>

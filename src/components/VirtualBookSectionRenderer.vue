@@ -28,7 +28,7 @@
       v-if="value.sections"
       :class="subsectionsPaneClass"
     >
-      <div>
+      <div v-if="editable">
         <select
           :value="sectionDisplay"
           @change="setSectionDisplay($event.target.value)"
@@ -228,7 +228,6 @@ export default class VirtualBookSectionRenderer extends Vue {
 <style lang="stylus" scoped>
 .vbook-section
   position relative
-  padding-left 4px
   width -webkit-fill-available
 .vbook-editor-subsections
   border 1px dashed rgba(0,0,0,0.5)

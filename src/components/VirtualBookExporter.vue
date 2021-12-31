@@ -11,14 +11,13 @@
 
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { EyeIcon, XIcon, DownloadIcon } from 'vue-feather-icons'
+import { EyeIcon, DownloadIcon } from 'vue-feather-icons'
 import FileSaver from 'file-saver'
 import VirtualBook from '@/classes/VirtualBook'
 
 @Component({
   components: {
     EyeIcon,
-    XIcon,
     DownloadIcon,
   },
 })
