@@ -35,7 +35,7 @@
         >
           <option value='full'>Show Subsections</option>
           <option value='linked'>Show Subsection Links</option>
-          <option value='hidden'>Hide Subsections</option>
+          <option value='separate'>Separate Subsections</option>
         </select>
       </div>
       <div :class="sectionDisplayClass">
@@ -61,7 +61,7 @@
             @change="$emit('change',$event)"
           />
           <div
-            v-else-if="editable || sectionDisplay !== 'hidden'"
+            v-else-if="editable || sectionDisplay !== 'separate'"
             :key="index"
           >
             <VirtualBookContentLink
@@ -238,7 +238,7 @@ export default class VirtualBookSectionRenderer extends Vue {
   position absolute
   top 0px
   right 0px
-.vbook-hidden-section-display
+.vbook-separate-section-display
   opacity 50%
 .indented
   margin-left 8px

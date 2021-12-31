@@ -14,7 +14,7 @@
         v-if="targetContent"
         class="vbook-explorer-content-pane"
       >
-        <div>
+        <div class="vbook-breadcrumbs-bar">
           <BreadcrumbLinks :reference="targetContent"/>
         </div>
         <div class="vbook-body">
@@ -35,6 +35,7 @@
             @change="onContentChange($event)"
           />
         </div>
+        <VirtualBookSectionsNavBar :reference="targetContent"/>
       </div>
       <div v-else>Content Not Found</div>
     </div>
@@ -103,6 +104,7 @@ import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.
 import HypertextNodeEditor from '@/components/HypertextNodeEditor.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
 import BreadcrumbLinks from '@/components/BreadcrumbLinks.vue'
+import VirtualBookSectionsNavBar from '@/components/VirtualBookSectionsNavBar.vue'
 import VirtualBookExporter from '@/components/VirtualBookExporter.vue'
 import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
 import ModalLayer from '@/components/ModalLayer.vue'
@@ -115,6 +117,7 @@ import StyleEditor from '@/components/StyleEditor.vue'
     HypertextNodeEditor,
     TableOfContents,
     BreadcrumbLinks,
+    VirtualBookSectionsNavBar,
     EditIcon,
     Trash2Icon,
     CodeIcon,
@@ -139,7 +142,9 @@ export default class VirtualBookExplorer extends Vue {
     'tr',
     'td',
     '.vbook-body',
+    '.vbook-breadcrumbs-bar',
     '.vbook-section',
+    '.vbook-section-nav-bar',
   ];
 
   previewHTML = '';

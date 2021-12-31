@@ -27,6 +27,8 @@ export interface VirtualBookContentReference {
   source?: VirtualBook;
   path?: PathStep[];
   value?: VirtualBookContent;
+  collectionKey?: string;
+  index?: number;
 }
 
 export type VirtualBookContentCallback = (
@@ -34,6 +36,10 @@ export type VirtualBookContentCallback = (
   path: PathStep[],
   source: VirtualBook
 ) => boolean | void;
+
+export enum SectionDisplayTypes {
+  SHOW_SUBSECTIONS_SEPARATELY = "separate"
+}
 
 export default class VirtualBook {
   style: StyleRuleMap = {};
@@ -189,5 +195,145 @@ export default class VirtualBook {
       }
       return target;
     }
+  }
+
+  static getContentReferenceStack(
+    reference: VirtualBookContentReference
+  ): VirtualBookContentReference[] {
+    const stack: VirtualBookContentReference[] = [];
+    if(reference && reference.path) {
+      let parent: VirtualBook | VirtualBookContent | undefined = reference.source;
+      for(let i = 0; i < reference.path.length; i += 2) {
+        if(parent) {
+          const collectionKey = String(reference.path[i]);
+          const index = Number(reference.path[i + 1]);
+          const entry: VirtualBookContentReference = {
+            source: reference.source,
+            path: reference.path.slice(0, i + 2),
+            collectionKey,
+            index,
+          };
+          entry.value = VirtualBook.resolvePath(
+            parent,
+            [collectionKey, index]
+          ) as VirtualBookContent;
+          stack.push(entry);
+          parent = entry.value;
+        }
+      }
+    }
+    return stack;
+  }
+
+  static getLastSeparateSubsection(
+    reference: VirtualBookContentReference
+  ): VirtualBookContentReference {
+    // If the section has separately displayed subsections, delegate to the
+    // last of those.
+    if(reference.value
+      && reference.value.sectionDisplay === SectionDisplayTypes.SHOW_SUBSECTIONS_SEPARATELY
+      && reference.value.sections.length
+      && reference.path
+    ) {
+      const lastIndex = reference.value.sections.length - 1;
+      return VirtualBook.getLastSeparateSubsection({
+        source: reference.source,
+        path: reference.path.concat('sections', lastIndex),
+        value: reference.value.sections[lastIndex],
+      })
+    }
+    // Pass back the reference we got.
+    return reference;
+  }
+
+  static getNextSection(
+    reference: VirtualBookContentReference
+  ): VirtualBookContentReference | null {
+    // If the section has separately displayed children, put the first of those next.
+    if(reference
+      && reference.value
+      && reference.value.sectionDisplay === SectionDisplayTypes.SHOW_SUBSECTIONS_SEPARATELY
+      && reference.value.sections.length
+      && reference.path
+    ) {
+      return {
+        source: reference.source,
+        path: reference.path.concat('sections', 0),
+        value: reference.value.sections[0],
+      };
+    }
+    // Otherwise, move on up the stack to find the next available section.
+    const stack = VirtualBook.getContentReferenceStack(reference);
+    while(stack.length) {
+      const target = stack.pop();
+      if(target && target.path && target.collectionKey && target.index !== undefined) {
+        const parent = stack.length
+          ? stack[stack.length - 1].value
+          : target.source;
+        const collection = VirtualBook.resolvePath(
+          parent,
+          [target.collectionKey]
+        );
+        if(Array.isArray(collection)) {
+          const nextIndex = target.index + 1;
+          const nextTarget = collection[nextIndex];
+          if(nextTarget) {
+            const basePath = target.path.slice(0, target.path.length - 1);
+            return {
+              source: reference.source,
+              path: basePath.concat(nextIndex),
+              value: nextTarget,
+            };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  static getPreviousSection(
+    reference: VirtualBookContentReference
+  ): VirtualBookContentReference | null {
+    const stack = VirtualBook.getContentReferenceStack(reference);
+    while(stack.length) {
+      const target = stack.pop();
+      if(target && target.path && target.collectionKey && target.index !== undefined) {
+        const parent = stack.length
+          ? stack[stack.length - 1].value
+          : target.source;
+        const collection = VirtualBook.resolvePath(
+          parent,
+          [target.collectionKey]
+        );
+        if(Array.isArray(collection)) {
+          const nextIndex = target.index - 1;
+          const nextTarget = collection[nextIndex];
+          if(nextTarget) {
+            const basePath = target.path.slice(0, target.path.length - 1);
+            const targetReference: VirtualBookContentReference = {
+              source: reference.source,
+              path: basePath.concat(nextIndex),
+              value: nextTarget,
+            };
+            return VirtualBook.getLastSeparateSubsection(targetReference);
+          }
+          // If we're the firest separately displayed subsection of our parent,
+          // shift the display to that parent.
+          if(parent && 'content' in parent) {
+            const parentSection = parent as VirtualBookSection;
+            if(parentSection.sectionDisplay === SectionDisplayTypes.SHOW_SUBSECTIONS_SEPARATELY
+              && nextIndex === -1
+            ) {
+              return {
+                source: reference.source,
+                path: target.path.slice(0, target.path.length - 2),
+                value: parent as VirtualBookSection,
+              }
+            }
+          }
+        }
+      }
+    }
+    return null;
   }
 }

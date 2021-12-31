@@ -6,7 +6,7 @@
     >{{placeholder}}</div>
     <EditorContent :editor="editor"/>
     <bubble-menu
-      v-if="editor"
+      v-if="editor && editable"
       :editor="editor"
       class="menu-box"
     >
