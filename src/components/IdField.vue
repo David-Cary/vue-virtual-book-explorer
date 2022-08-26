@@ -11,7 +11,7 @@
 
 <script lang="ts">
 import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
-import VirtualBook from '@/classes/VirtualBook'
+import VirtualBook, { VirtualBookContent } from '@/classes/VirtualBook'
 
 @Component
 export default class IdField extends Vue {
@@ -34,13 +34,15 @@ export default class IdField extends Vue {
       if(!field.value.match(/^([a-z]|[A-Z])/)) {
         this.errorClass = 'invalid-id';
       } else if(this.source && field.value !== this.value) {
-        const match = VirtualBook.findContent(
+        const matches = VirtualBook.searchBookContents(
           this.source,
           {
-            id: field.value
+            matchVia: (item: VirtualBookContent) => {
+              return VirtualBook.getContentId(item) === field.value;
+            },
           }
         );
-        if(match) {
+        if(matches.length) {
           this.errorClass = 'duplicate-id';
         }
       }

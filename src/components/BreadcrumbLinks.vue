@@ -1,5 +1,6 @@
 <template>
   <span>
+    <ChevronRightIcon size="1x"/>
     <span
       v-for="(link, index) of linkData"
       :key="index"

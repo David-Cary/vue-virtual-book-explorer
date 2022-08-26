@@ -18,14 +18,24 @@ export type StringMap = {[k: string]: string};
 
 export type StyleRuleMap = {[k: string]: StringMap};
 
-export interface VirtualBookContentSearchCriteria {
-  id?: string;
-  path?: PathStep[];
+export type VirtualBookContentSearchFilter= (
+  item: VirtualBookContent,
+  path?: PathStep[],
+  source?: VirtualBook
+) => boolean | number;
+
+export interface VirtualBookContentSearchOptions {
+  path: PathStep[];
+  matchVia: VirtualBookContentSearchFilter;
+}
+
+export interface VirtualBookContentSearchResult {
+  path: PathStep[];
 }
 
 export interface VirtualBookContentReference {
-  source?: VirtualBook;
-  path?: PathStep[];
+  source: VirtualBook;
+  path: PathStep[];
   value?: VirtualBookContent;
   collectionKey?: string;
   index?: number;
@@ -33,8 +43,8 @@ export interface VirtualBookContentReference {
 
 export type VirtualBookContentCallback = (
   item: VirtualBookContent,
-  path: PathStep[],
-  source: VirtualBook
+  path?: PathStep[],
+  source?: VirtualBook
 ) => boolean | void;
 
 export enum SectionDisplayTypes {
@@ -67,89 +77,88 @@ export default class VirtualBook {
   static forContentIn(
     source: VirtualBook,
     callback: VirtualBookContentCallback,
-    subset?: VirtualBookContent[],
-    path?: PathStep[]
+    path?: PathStep[],
+    target?: VirtualBookContent | VirtualBookContent[]
   ): void {
-    if(subset) {
-      for(let i = 0; i < subset.length; i++) {
-        const item = subset[i];
-        const subpath = path ? path.concat(i) : [i];
-        const signal = callback(item, subpath, source);
+    if(path) {
+      const validatedTarget = target || VirtualBook.resolvePath(source, path);
+      if(Array.isArray(validatedTarget)) {
+        for(let i = 0; i < validatedTarget.length; i++) {
+          const item = validatedTarget[i] as VirtualBookContent;
+          const subpath = path ? path.concat(i) : [i];
+          VirtualBook.forContentIn(source, callback, subpath, item);
+        }
+      } else {
+        const targetContent = target as VirtualBookContent;
+        const signal = callback(targetContent, path, source);
         if(signal !== false) {
-          if(item.content) {
-            VirtualBook.forContentIn(source, callback, item.content, subpath.concat('content'));
+          if(targetContent.content) {
+            VirtualBook.forContentIn(
+              source,
+              callback,
+              path.concat('content'),
+              targetContent.content
+            );
           }
-          if('marks' in item && item.marks) {
-            VirtualBook.forContentIn(source, callback, item.marks, subpath.concat('marks'));
-          } else if(item.sections) {
-            VirtualBook.forContentIn(source, callback, item.sections, subpath.concat('sections'));
+          if('marks' in targetContent && targetContent.marks) {
+            VirtualBook.forContentIn(
+              source,
+              callback,
+              path.concat('marks'),
+              targetContent.marks
+            );
+          } else if(targetContent.sections) {
+            VirtualBook.forContentIn(
+              source,
+              callback,
+              path.concat('sections'),
+              targetContent.sections
+            );
           }
         }
       }
     } else if(source && source.sections) {
-      VirtualBook.forContentIn(source, callback, source.sections, ['sections']);
+      VirtualBook.forContentIn(source, callback, ['sections'], source.sections);
     }
   }
 
-  static findContent(
+  static searchBookContents(
     source: VirtualBook,
-    evaluate: VirtualBookContentCallback | VirtualBookContentSearchCriteria,
-    subset?: VirtualBookContent[],
-    path?: PathStep[]
-  ): VirtualBookContentReference | null {
-    if('path' in evaluate && evaluate.path) {
-      const match = VirtualBook.resolvePath(source, evaluate.path);
-      if(match) {
-        return {
-          source,
-          path: evaluate.path,
-          value: match as VirtualBookContent,
-        }
-      }
-    } else {
-      if(subset) {
-        for(let i = 0; i < subset.length; i++) {
-          const item = subset[i];
-          const subpath = path ? path.concat(i) : [i];
-          const matched = typeof evaluate === 'function'
-            ? evaluate(item, subpath, source)
-            : VirtualBook.checkContentCriteria(item, evaluate);
-          if(matched) {
-            return {
-              source,
-              path: subpath,
-              value: item,
-            };
-          }
-          if(item.content) {
-            const match = VirtualBook.findContent(source, evaluate, item.content, subpath.concat('content'));
-            if(match) return match;
-          }
-          if('marks' in item && item.marks) {
-            const match = VirtualBook.findContent(source, evaluate, item.marks, subpath.concat('marks'));
-            if(match) return match;
-          } else if(item.sections) {
-            const match = VirtualBook.findContent(source, evaluate, item.sections, subpath.concat('sections'));
-            if(match) return match;
+    options: Partial<VirtualBookContentSearchOptions>
+  ): VirtualBookContentSearchResult[] {
+    const results: VirtualBookContentSearchResult[] = [];
+    VirtualBook.forContentIn(
+      source,
+      (item: VirtualBookContent, path?: PathStep[]) => {
+        if(options.matchVia) {
+          const matched = options.matchVia(item, path, source);
+          if(!matched) {
+            return;
           }
         }
-      } else if(source && source.sections) {
-        return VirtualBook.findContent(source, evaluate, source.sections, ['sections']);
-      }
-    }
-    return null;
+        results.push({ path: path || [] });
+        return false;
+      },
+      options.path
+    );
+    return results;
   }
 
-  static checkContentCriteria(
-    target: VirtualBookContent,
-    criteria: VirtualBookContentSearchCriteria
-  ): boolean {
-    if(criteria.id) {
-      if(VirtualBook.getContentId(target) !== criteria.id) {
-        return false;
-      }
-    }
-    return true;
+  static searchResultToReference(
+    result: VirtualBookContentSearchResult,
+    source: VirtualBook
+  ): VirtualBookContentReference {
+    return {
+      source,
+      path: result.path,
+      value: VirtualBook.resolvePath(source, result.path) as VirtualBookContent,
+      collectionKey: result.path.length > 1
+        ? String(result.path[result.path.length - 2])
+        : undefined,
+      index: result.path.length > 1
+        ? Number(result.path[result.path.length - 1])
+        : undefined
+    };
   }
 
   static getContentId(target: VirtualBookContent): string | null {
@@ -317,7 +326,7 @@ export default class VirtualBook {
             };
             return VirtualBook.getLastSeparateSubsection(targetReference);
           }
-          // If we're the firest separately displayed subsection of our parent,
+          // If we're the first separately displayed subsection of our parent,
           // shift the display to that parent.
           if(parent && 'content' in parent) {
             const parentSection = parent as VirtualBookSection;

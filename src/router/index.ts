@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import VueRouter, { RouteConfig } from 'vue-router'
 import BookExplorerView from '../views/BookExplorerView.vue'
+import VirtualBook, { VirtualBookContent } from '@/classes/VirtualBook'
 
 Vue.use(VueRouter)
 
@@ -10,7 +11,7 @@ const routes: Array<RouteConfig> = [
     name: 'Home',
     component: BookExplorerView,
     props: {
-      contentCriteria: {
+      searchOptions: {
         path: ['sections', 0],
       },
     },
@@ -28,7 +29,7 @@ const routes: Array<RouteConfig> = [
         path.push('sections', steps[i]);
       }
       return {
-        contentCriteria: {
+        searchOptions: {
           path,
         },
       };
@@ -40,9 +41,31 @@ const routes: Array<RouteConfig> = [
     component: BookExplorerView,
     props: route => {
       return {
-        contentCriteria: {
-          id: route.params['content_id'],
-        },
+        searchOptions: {
+          matchVia: (item: VirtualBookContent) => {
+            return VirtualBook.getContentId(item) === route.params['content_id'];
+          }
+        }
+      };
+    },
+  },
+  {
+    path: '/find',
+    name: 'Find Content',
+    component: BookExplorerView,
+    props: route => {
+      return {
+        searchOptions: {
+          matchVia: (item: VirtualBookContent) => {
+            if(typeof route.query?.term === 'string') {
+              const casedTerm = route.query.term.toLowerCase();
+              if(item.title && item.title?.toLowerCase() === casedTerm) {
+                return true;
+              }
+            }
+            return false;
+          }
+        }
       };
     },
   },

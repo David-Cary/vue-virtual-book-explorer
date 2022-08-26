@@ -10,34 +10,66 @@
         :editable="editing"
         @change="$emit('change', $event)"
       />
-      <div
-        v-if="targetContent"
-        class="vbook-explorer-content-pane"
-      >
-        <div class="vbook-breadcrumbs-bar">
-          <BreadcrumbLinks :reference="targetContent"/>
+      <div class="vbook-explorer-content-pane">
+        <div class="vbook-nav-bar">
+          <span class="vbook-search-box">
+            <input
+              type="text"
+              v-model="searchText"
+              @keyup="onSearchKey($event)"
+            />
+            <button @click="runSearch()">
+              <SearchIcon size="1x"/>
+            </button>
+          </span>
         </div>
-        <div class="vbook-body">
-          <VirtualBookSectionRenderer
-            v-if="targetContent.value.sections"
-            :source="model"
-            :path="targetContent.path"
-            :value="targetContent.value"
-            :editable="editing"
-            @change="$emit('change', $event)"
-          />
-          <HypertextNodeEditor
-            v-else
-            :context="model"
-            :content="targetContent.value"
-            :editable="editing"
-            placeholder="Target Content"
-            @change="onContentChange($event)"
-          />
+        <div
+          v-if="matchingContent.length > 1"
+        >
+          <div>Multiple Matches Found:</div>
+          <div
+            v-for="(item, index) of matchingContent"
+            :key="index"
+            class="vbook-search-result"
+          >
+            <BreadcrumbLinks :reference="item"/>
+            <span v-if="item.value.title">
+              <ChevronRightIcon size="1x"/>
+              <VirtualBookContentLink
+                :path="item.path"
+                :target="item.value"
+              />
+            </span>
+          </div>
         </div>
-        <VirtualBookSectionsNavBar :reference="targetContent"/>
+        <div
+          v-else-if="matchingContent.length === 1"
+        >
+          <div class="vbook-breadcrumbs-bar">
+            <BreadcrumbLinks :reference="targetContent"/>
+          </div>
+          <div class="vbook-body">
+            <VirtualBookSectionRenderer
+              v-if="targetContent.value.sections"
+              :source="model"
+              :path="targetContent.path"
+              :value="targetContent.value"
+              :editable="editing"
+              @change="$emit('change', $event)"
+            />
+            <VirtualBookSnippetRenderer
+              v-else
+              :source="model"
+              :path="targetContent.path"
+              :editable="editing"
+              placeholder="Target Content"
+              @change="$emit('change', $event)"
+            />
+          </div>
+          <VirtualBookSectionsNavBar :reference="targetContent"/>
+        </div>
+        <div v-else>Content Not Found</div>
       </div>
-      <div v-else>Content Not Found</div>
     </div>
     <div v-else>Book Not Found</div>
     <div>
@@ -90,20 +122,26 @@
 </template>
 
 <script lang="ts">
-import { VNode } from 'vue'
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { EditIcon, Trash2Icon, CodeIcon } from 'vue-feather-icons'
+import {
+  EditIcon,
+  Trash2Icon,
+  CodeIcon,
+  SearchIcon,
+  ChevronRightIcon
+} from 'vue-feather-icons'
 import VirtualBook, {
-  VirtualBookContentSearchCriteria,
+  VirtualBookContentSearchOptions,
   VirtualBookContentReference,
   PathStep,
 } from '@/classes/VirtualBook'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
 import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.vue'
-import HypertextNodeEditor from '@/components/HypertextNodeEditor.vue'
+import VirtualBookSnippetRenderer from '@/components/VirtualBookSnippetRenderer.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
 import BreadcrumbLinks from '@/components/BreadcrumbLinks.vue'
+import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
 import VirtualBookSectionsNavBar from '@/components/VirtualBookSectionsNavBar.vue'
 import VirtualBookExporter from '@/components/VirtualBookExporter.vue'
 import VirtualBookImporter from '@/components/VirtualBookImporter.vue'
@@ -114,13 +152,16 @@ import StyleEditor from '@/components/StyleEditor.vue'
 @Component ({
   components: {
     VirtualBookSectionRenderer,
-    HypertextNodeEditor,
+    VirtualBookSnippetRenderer,
     TableOfContents,
     BreadcrumbLinks,
+    VirtualBookContentLink,
     VirtualBookSectionsNavBar,
     EditIcon,
     Trash2Icon,
     CodeIcon,
+    SearchIcon,
+    ChevronRightIcon,
     VirtualBookExporter,
     VirtualBookImporter,
     ModalLayer,
@@ -130,7 +171,9 @@ import StyleEditor from '@/components/StyleEditor.vue'
 })
 export default class VirtualBookExplorer extends Vue {
   @Prop() model?: VirtualBook;
-  @Prop() contentCriteria?: VirtualBookContentSearchCriteria;
+  @Prop() searchOptions?: VirtualBookContentSearchOptions;
+
+  searchText = '';
 
   editing = false;
   showingStyle = false;
@@ -149,11 +192,18 @@ export default class VirtualBookExplorer extends Vue {
 
   previewHTML = '';
 
-  get targetContent(): VirtualBookContentReference | null {
-    if(this.model && this.contentCriteria) {
-      return VirtualBook.findContent(this.model, this.contentCriteria);
+  get matchingContent(): VirtualBookContentReference[] | null {
+    if(this.model && this.searchOptions) {
+      const results = VirtualBook.searchBookContents(this.model, this.searchOptions);
+      return results.map(
+        result => VirtualBook.searchResultToReference(result, this.model as VirtualBook)
+      );
     }
-    return null;
+    return [];
+  }
+
+  get targetContent(): VirtualBookContentReference | null {
+    return this.matchingContent?.length ? this.matchingContent[0] : null;
   }
 
   onClickRevert(): void {
@@ -179,14 +229,6 @@ export default class VirtualBookExplorer extends Vue {
     );
   }
 
-  onContentChange(change: ValueChangeDescription<VNode[]>): void {
-    const request = new SetValueRequest(change);
-    if(!request.path && this.targetContent) {
-      request.path = this.targetContent.path;
-    }
-    this.$emit('change', request);
-  }
-
   onStyleChange(change: ValueChangeDescription<unknown>): void {
     let path: PathStep[] = ['style'];
     if(change.path) {
@@ -201,6 +243,21 @@ export default class VirtualBookExplorer extends Vue {
       })
     );
   }
+
+  onSearchKey(event: KeyboardEvent): void {
+    if(event.key === 'Enter') {
+      this.runSearch();
+    }
+  }
+
+  runSearch(): void {
+    this.$router.push({
+      path: '/find',
+      query: {
+        term: this.searchText
+      }
+    });
+  }
 }
 </script>
 
@@ -209,6 +266,14 @@ export default class VirtualBookExplorer extends Vue {
   display flex
 .vbook-explorer-content-pane
   width -webkit-fill-available
+.vbook-nav-bar
+  width -webkit-fill-available
+  text-align right
+.vbook-search-result
+  background-color snow
+  border 1px solid gray
+  border-radius 4px
+  margin-left 8px
 .active-button
   background-color yellow
 </style>
