@@ -6,11 +6,15 @@
     >
       <ScopedStyleRenderer :rules="model.style"/>
       <TableOfContents
+        v-if="model.sections.length || editing"
         :model="model"
         :editable="editing"
         @change="$emit('change', $event)"
       />
-      <div class="vbook-explorer-content-pane">
+      <div
+        v-if="model.sections.length"
+        class="vbook-explorer-content-pane"
+      >
         <div class="vbook-nav-bar">
           <span class="vbook-search-box">
             <input
@@ -50,7 +54,7 @@
           </div>
           <div class="vbook-body">
             <VirtualBookSectionRenderer
-              v-if="targetContent.value.sections"
+              v-if="targetContent.value"
               :source="model"
               :path="targetContent.path"
               :value="targetContent.value"
@@ -70,6 +74,7 @@
         </div>
         <div v-else>Content Not Found</div>
       </div>
+      <div v-else>Book Is Empty</div>
     </div>
     <div v-else>Book Not Found</div>
     <div>
@@ -203,6 +208,7 @@ export default class VirtualBookExplorer extends Vue {
   }
 
   get targetContent(): VirtualBookContentReference | null {
+  console.log(this.model)
     return this.matchingContent?.length ? this.matchingContent[0] : null;
   }
 

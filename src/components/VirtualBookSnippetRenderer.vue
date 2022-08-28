@@ -41,7 +41,9 @@ export default class VirtualBookSnippetRenderer extends Vue {
     const request = new SetValueRequest({
       path: this.path?.concat('content'),
       value: change.value[0].content,
-      previousValue: change.previousValue ? change.previousValue[0].content : undefined,
+      previousValue: change.previousValue?.length
+        ? change.previousValue[0].content
+        : undefined,
     });
     this.$emit('change', request);
   }

@@ -1,7 +1,7 @@
 <template>
   <div v-if="model">
     <div class="vbook-table-of-contents-header">
-      <div v-if="model.sections.length">
+      <div v-if="model.sections && model.sections.length">
         <ChevronDownIcon
           v-if="isOpen"
           @click="isOpen = false"
