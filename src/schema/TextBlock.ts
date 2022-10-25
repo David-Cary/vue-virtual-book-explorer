@@ -30,6 +30,8 @@ export const TextBlock = Node.create<TextBlockOptions>({
 
   content: 'inline*',
 
+  defining: true,
+
   addAttributes() {
     return {
       id: {
@@ -46,12 +48,22 @@ export const TextBlock = Node.create<TextBlockOptions>({
 
   parseHTML() {
     return [
-      { tag: 'div' },
+      {
+        tag: `div[data-type="${this.name}"]`,
+      },
     ]
   },
 
   renderHTML({ HTMLAttributes }: {HTMLAttributes: Record<string, unknown>}) {
-    return ['div', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0]
+    return [
+      'div',
+      mergeAttributes(
+        this.options.HTMLAttributes,
+        HTMLAttributes,
+        { 'data-type': this.name }
+      ),
+      0
+    ];
   },
 
   addCommands() {

@@ -24,7 +24,10 @@
         >
           <CropIcon size="1x"/>
         </button>
-        <button @click="toggleBulletList()">
+        <button
+          :class="{ 'active-tag-button': inList}"
+          @click="toggleList()"
+        >
           <ListIcon size="1x"/>
         </button>
         <button
@@ -34,14 +37,14 @@
           <GridIcon size="1x"/>
         </button>
         <button
-          :class="{ 'active-tag-button': inTextBlock }"
+          :class="{ 'active-tag-button': selectionNodeTypes['textBlock'] }"
           @click="toggleTextBlock()"
         >
           <MenuIcon size="1x"/>
         </button>
         <button
-          :class="{ 'active-tag-button': inTopicBlock }"
-          @click="toggleTopicBlock()"
+          :class="{ 'active-tag-button': selectionNodeTypes['outerBlock'] }"
+          @click="toggleOuterBlock()"
         >
           <CreditCardIcon size="1x"/>
         </button>
@@ -56,12 +59,12 @@
         <GridIcon size="1x"/>
         <TableEditor :editor="editor"/>
       </div>
-      <div v-if="inTopicBlock" class="flex-row">
+      <div v-if="selectionNodeTypes['outerBlock']" class="flex-row">
         <CreditCardIcon size="1x"/>
         <NamedBlockEditor
           :context="context"
           :editor="editor"
-          typeName="topicBlock"
+          typeName="outerBlock"
           typeLabel="Topic"
         />
       </div>
@@ -74,11 +77,11 @@
           typeLabel="Text Block"
         />
       </div>
-      <div v-if="inBulletList | inOrderedList">
+      <div v-if="inList">
         <ListIcon size="1x"/>
         <input
           type="checkbox"
-          checked="inOrderedList"
+          :checked="selectionNodeTypes['orderedList']"
           @change="toggleListType()"
         />
         <label>Ordered?</label>
@@ -136,7 +139,7 @@ import {
   EditorContent,
   JSONContent,
   BubbleMenu,
-  FloatingMenu
+  FloatingMenu,
 } from '@tiptap/vue-2'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -144,6 +147,7 @@ import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
+import { Node, NodeType } from 'prosemirror-model'
 import {
   CropIcon,
   LinkIcon,
@@ -160,7 +164,7 @@ import VirtualBook from '@/classes/VirtualBook'
 import { Snippet } from '@/schema/Snippet'
 import { TextBlock } from '@/schema/TextBlock'
 import { TextClass } from '@/schema/TextClass'
-import { TopicBlock } from '@/schema/TopicBlock'
+import { OuterBlock } from '@/schema/OuterBlock'
 import { TextName } from '@/schema/TextName'
 import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
@@ -207,6 +211,8 @@ export default class HypertextContentEditor extends Vue {
 
   @Prop() placeholder?: string;
 
+  selectionAncestry: Node[] = [];
+
   editor = new Editor({
     content: '',
     extensions: [
@@ -215,7 +221,7 @@ export default class HypertextContentEditor extends Vue {
       Snippet,
       TextBlock,
       TextClass,
-      TopicBlock,
+      OuterBlock,
       TextName,
       Table,
       TableRow,
@@ -228,27 +234,54 @@ export default class HypertextContentEditor extends Vue {
         value: doc.content,
         previousValue: this.content ? this.content.slice() : undefined,
       });
-    }
+    },
+    onSelectionUpdate: () => this.refreshSelectionData(),
   });
 
-  get inBulletList(): boolean {
-    return this.editor.isActive('bulletList');
+  get selectionNodeTypes(): Record<string, NodeType> {
+    const map: Record<string, NodeType> = {};
+    this.selectionAncestry.forEach(node => {
+      map[node.type.name] = node.type;
+    });
+    return map;
   }
 
-  toggleBulletList(): void {
-    this.editor.chain().focus().toggleBulletList().run();
+  refreshSelectionData(): void {
+    this.selectionAncestry.length = 0;
+    const { $from, $to} = this.editor.state.selection;
+    const maxDepth = Math.min($from.depth, $to.depth);
+    for(let i = 1; i <= maxDepth; i++) {
+      const toNode = $to.node(i);
+      const fromNode = $from.node(i);
+      if(toNode === fromNode) {
+        this.selectionAncestry.push(toNode);
+      } else {
+        break;
+      }
+    }
   }
 
-  get inOrderedList(): boolean {
-    return this.editor.isActive('orderedList');
+  get inList(): boolean {
+    return this.selectionNodeTypes['bulletList'] !== undefined
+      || this.selectionNodeTypes ['orderedList'] !== undefined;
+  }
+
+  toggleList(): void {
+    if(this.selectionNodeTypes['orderedList']) {
+      this.editor.chain().focus().toggleOrderedList().run();
+    } else {
+      this.editor.chain().focus().toggleBulletList().run();
+    }
+    this.refreshSelectionData();
   }
 
   toggleListType(): void {
-    if(this.inBulletList) {
+    if(this.selectionNodeTypes['bulletList']) {
       this.editor.chain().focus().toggleBulletList().toggleOrderedList().run();
     } else {
       this.editor.chain().focus().toggleOrderedList().toggleBulletList().run();
     }
+    this.refreshSelectionData();
   }
 
   get inTable(): boolean {
@@ -349,12 +382,8 @@ export default class HypertextContentEditor extends Vue {
       .run();
   }
 
-  get inTopicBlock(): boolean {
-    return this.editor.isActive('topicBlock');
-  }
-
-  toggleTopicBlock(): void {
-    this.editor.chain().focus().toggleTopicBlock().run();
+  toggleOuterBlock(): void {
+    this.editor.chain().focus().toggleOuterBlock().run();
   }
 
   get selectionNamed(): boolean {

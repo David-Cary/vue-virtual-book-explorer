@@ -208,7 +208,6 @@ export default class VirtualBookExplorer extends Vue {
   }
 
   get targetContent(): VirtualBookContentReference | null {
-  console.log(this.model)
     return this.matchingContent?.length ? this.matchingContent[0] : null;
   }
 
