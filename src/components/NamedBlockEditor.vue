@@ -1,36 +1,30 @@
 <template>
-  <div>
+  <div v-if="target">
     <div>
       <IdField
         :source="context"
-        :placeholder="validTypeLabel + ' Id'"
-        :value="blockAttributes.id"
+        placeholder="Id"
+        :value="target.attrs.id"
         @change="setAttribute('id', $event.value)"
       />
     </div>
     <div>
       <input
         type="text"
-        :placeholder="validTypeLabel + ' Name'"
-        :value="blockAttributes.name"
-        @change="setAttribute('name', $event.target.value)"
-      />
-    </div>
-    <div>
-      <input
-        type="text"
-        :placeholder="validTypeLabel + ' Classes'"
-        :value="blockAttributes.class"
+        placeholder="Classes"
+        :value="target.attrs.class"
         @change="setAttribute('class', $event.target.value)"
       />
     </div>
   </div>
+  <div v-else>No Target</div>
 </template>
 
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { Editor } from '@tiptap/vue-2'
-import VirtualBook, { StringMap } from '@/classes/VirtualBook'
+import { Node as PMNode } from 'prosemirror-model'
+import VirtualBook from '@/classes/VirtualBook'
 import IdField from '@/components/IdField.vue'
 
 @Component ({
@@ -41,28 +35,20 @@ import IdField from '@/components/IdField.vue'
 export default class NamedBlockEditor extends Vue {
   @Prop() context?: VirtualBook;
   @Prop() editor?: Editor;
-  @Prop() typeName?: string;
-  @Prop() typeLabel?: string;
+  @Prop() position?: number;
 
-  get validTypeLabel(): string {
-    return this.typeLabel ? this.typeLabel : 'Block';
-  }
-
-  get blockAttributes(): StringMap {
-    if(this.editor && this.typeName) {
-      return this.editor.getAttributes(this.typeName);
+  get target(): PMNode | null {
+    if(this.editor && this.position !== undefined) {
+      return this.editor.state.doc.nodeAt(this.position);
     }
-    return {};
+    return null;
   }
 
   setAttribute(key: string, value: string): void {
-    if(this.editor && this.typeName && key) {
-      const update: StringMap = {};
-      update[key] = value;
+    if(this.editor && this.position !== undefined) {
       this.editor
         .chain()
-        .focus()
-        .updateAttributes(this.typeName, update)
+        .setNodeAttribute(this.position, key, value)
         .run();
     }
   }

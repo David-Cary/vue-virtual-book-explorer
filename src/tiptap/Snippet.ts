@@ -16,7 +16,7 @@ declare module '@tiptap/core' {
        */
       setSnippet: (options: { id: string }) => ReturnType,
       /**
-       * Add an snippet
+       * Remove a snippet
        */
       releaseSnippet: () => ReturnType,
     }
@@ -102,7 +102,7 @@ export const Snippet = Node.create<SnippetOptions>({
           }
         }
         return false;
-      }
+      },
     }
   },
 })

@@ -32,20 +32,6 @@ export const TextBlock = Node.create<TextBlockOptions>({
 
   defining: true,
 
-  addAttributes() {
-    return {
-      id: {
-        default: undefined,
-      },
-      name: {
-        default: undefined,
-      },
-      class: {
-        default: undefined,
-      },
-    }
-  },
-
   parseHTML() {
     return [
       {

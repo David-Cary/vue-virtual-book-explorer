@@ -30,20 +30,6 @@ export const OuterBlock = Node.create<OuterBlockOptions>({
 
   defining: true,
 
-  addAttributes() {
-    return {
-      id: {
-        default: undefined,
-      },
-      name: {
-        default: undefined,
-      },
-      class: {
-        default: undefined,
-      },
-    }
-  },
-
   parseHTML() {
     return [
       {
