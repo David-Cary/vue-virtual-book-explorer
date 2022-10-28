@@ -1,15 +1,6 @@
 <template>
   <div>
-    <div
-      v-if="editor.isEmpty"
-      class="placeholder"
-    >{{placeholder}}</div>
-    <EditorContent :editor="editor"/>
-    <bubble-menu
-      v-if="editor && editable"
-      :editor="editor"
-      class="menu-box"
-    >
+    <div v-if="editable">
       <div>
         <button
           :class="{ 'active-tag-button': linkActive }"
@@ -68,7 +59,7 @@
           >{{getNodeLabel(ref)}}</option>
         </select>
       </div>
-      <div v-if="selectedNode">
+      <div v-if="selectedNode" class="selected-node-property-pane">
         <div v-if="selectedNode.node.type.attrs.id">
           <label class="row-label">Id</label>
           <IdField
@@ -129,16 +120,14 @@
           />
         </div>
       </div>
-    </bubble-menu>
-    <floating-menu
-      v-if="editor"
-      :editor="editor"
-      class="menu-box"
-    >
-      <button @click="insertTable()">
-        <GridIcon size="1x"/>
-      </button>
-    </floating-menu>
+    </div>
+    <div
+      v-if="editor.isEmpty"
+      class="placeholder"
+    >{{placeholder}}</div>
+    <div :class="{ 'content-editor-pane': editable }">
+      <EditorContent :editor="editor"/>
+    </div>
   </div>
 </template>
 
@@ -148,8 +137,6 @@ import {
   Editor,
   EditorContent,
   JSONContent,
-  BubbleMenu,
-  FloatingMenu,
 } from '@tiptap/vue-2'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -187,8 +174,6 @@ import TableEditor from '@/components/TableEditor.vue'
 @Component ({
   components: {
     EditorContent,
-    BubbleMenu,
-    FloatingMenu,
     IdField,
     CropIcon,
     LinkIcon,
@@ -498,10 +483,12 @@ export default class HypertextContentEditor extends Vue {
   position absolute
   pointer-events none
   margin-left 2px
-.menu-box
-  border 1px solid gray
-  background-color white
-  width max-content
+.content-editor-pane
+  overflow-y scroll
+  max-height 500px
+  border 1px solid silver
+.selected-node-property-pane
+  border 1px solid silver
 .active-tag-button
   background-color yellow
 .accordian-header
