@@ -1,21 +1,27 @@
 <template>
   <table>
-    <tr>
-      <td></td>
+    <tr v-if="canAddRowAbove || nodeType === 'table'">
+      <td v-if="canEditColumns"></td>
       <td>
-        <button @click="addRowBefore()">
+        <button
+          v-if="canAddRowAbove"
+          @click="addRowBefore()"
+        >
           <ChevronUpIcon size="1x"/>
         </button>
       </td>
-      <td></td>
+      <td v-if="canEditColumns"></td>
       <td>
-        <button @click="deleteTable()">
-          <MinusCircleIcon size="1x"/>
+        <button
+          v-if="!nodeType || nodeType === 'table'"
+          @click="deleteTable()"
+        >
+          <Trash2Icon size="1x"/>
         </button>
       </td>
     </tr>
     <tr>
-      <td>
+      <td v-if="canEditColumns">
         <button @click="addColumnBefore()">
           <ChevronLeftIcon size="1x"/>
         </button>
@@ -23,28 +29,31 @@
       <td>
         <PlusIcon size="1x"/>
       </td>
-      <td>
+      <td v-if="canEditColumns">
         <button @click="addColumnAfter()">
           <ChevronRightIcon size="1x"/>
         </button>
       </td>
       <td>
-        <button @click="deleteRow()">
+        <button
+          v-if="nodeType !== 'table'"
+          @click="deleteRow()"
+        >
           <MinusIcon size="1x"/>
         </button>
       </td>
     </tr>
     <tr>
-      <td></td>
+      <td v-if="canEditColumns"></td>
       <td>
         <button @click="addRowAfter()">
           <ChevronDownIcon size="1x"/>
         </button>
       </td>
-      <td></td>
+      <td v-if="canEditColumns"></td>
       <td></td>
     </tr>
-    <tr>
+    <tr v-if="canEditColumns">
       <td></td>
       <td>
         <button @click="deleteColumn()">
@@ -63,7 +72,7 @@ import { Editor } from '@tiptap/vue-2'
 import {
   PlusIcon,
   MinusIcon,
-  MinusCircleIcon,
+  Trash2Icon,
   ChevronUpIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -74,7 +83,7 @@ import {
   components: {
     PlusIcon,
     MinusIcon,
-    MinusCircleIcon,
+    Trash2Icon,
     ChevronUpIcon,
     ChevronDownIcon,
     ChevronLeftIcon,
@@ -83,6 +92,19 @@ import {
 })
 export default class TableEditor extends Vue {
   @Prop() editor?: Editor;
+  @Prop() nodeType?: string;
+
+  get canAddRowAbove(): boolean {
+    return !this.nodeType
+      || this.nodeType === 'tableRow'
+      || this.nodeType === 'tableCell';
+  }
+
+  get canEditColumns(): boolean {
+    return !this.nodeType
+      || this.nodeType === 'tableCell'
+      || this.nodeType === 'tableHeader';
+  }
 
   addColumnAfter(): void {
     if(this.editor) {

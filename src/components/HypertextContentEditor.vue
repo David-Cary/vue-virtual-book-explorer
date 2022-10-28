@@ -25,13 +25,13 @@
           <CropIcon size="1x"/>
         </button>
         <button
-          :class="{ 'active-tag-button': inList}"
+          :class="{ 'active-tag-button': listInSelection}"
           @click="toggleList()"
         >
           <ListIcon size="1x"/>
         </button>
         <button
-          v-if="!inTable"
+          v-if="!selectionNodeTypes['table']"
           @click="insertTable()"
         >
           <GridIcon size="1x"/>
@@ -48,72 +48,86 @@
         >
           <span :is="nodeTypeData['outerBlock'].icon" size="1x"/>
         </button>
-      </div>
-      <div v-if="inTable" class="flex-row">
-        <GridIcon size="1x"/>
-        <TableEditor :editor="editor"/>
-      </div>
-      <div>
-        <div
-          v-for="(ref, index) in selectionAncestry"
-          :key="index"
+        <button
+          :class="{ 'active-tag-button': selectionNodeTypes['compiledText'] }"
+          @click="toggleCompiledText()"
         >
-          <div
-            v-if="ref.node"
-            class="accordian-header"
-            @click="toggleSelectedNode(ref)"
-          >
-            <ChevronDownIcon
-              v-if="selectedNode === ref"
-              size="1x"
-            />
-            <ChevronRightIcon
-              v-else
-              size="1x"
-            />
-            <span v-if="ref.node.attrs.id">{{ref.node.attrs.id}}</span>
-            <span v-else class="type-header">{{ref.node.type.name}}</span>
-          </div>
-          <NamedBlockEditor
-            v-if="selectedNode === ref"
-            :context="context"
-            :editor="editor"
-            :position="ref.position"
+          <span :is="nodeTypeData['compiledText'].icon" size="1x"/>
+        </button>
+      </div>
+      <div v-if="selectionNodes.length">
+        <select
+          :value="selectedNode ? selectedNode.pos : -1"
+          @change="onSelectNode($event.target.value)"
+        >
+          <option value="-1">{{selectedNode ? 'Clear Selection' : 'Select Item' }}</option>
+          <option
+            v-for="(ref, index) in selectionNodes"
+            :key="index"
+            :value="ref.pos"
+          >{{getNodeLabel(ref)}}</option>
+        </select>
+      </div>
+      <div v-if="selectedNode">
+        <div v-if="selectedNode.node.type.attrs.id">
+          <label class="row-label">Id</label>
+          <IdField
+            :source="context"
+            :value="selectedNode.node.attrs.id"
+            @change="setNodeAttribute(selectedNode.pos, 'id', $event.value)"
           />
         </div>
-      </div>
-      <div v-if="inList">
-        <ListIcon size="1x"/>
-        <input
-          type="checkbox"
-          :checked="selectionNodeTypes['orderedList']"
-          @change="toggleListType()"
-        />
-        <label>Ordered?</label>
-      </div>
-      <div v-if="snippetActive">
-        <IdField
-          :source="context"
-          :value="snippetId"
-          placeholder="Snippet Id"
-          @change="onSnippetIdChange($event)"
-        />
-      </div>
-      <div>
-        <TagIcon size="1x"/>
-        <input
-          type="text"
-          placeholder="text classes"
-          :value="textClasses"
-          @change="setTextClasses($event.target.value)"
-        />
-      </div>
-      <div>
-        <LinkEditor
-          v-if="linkActive"
+        <div v-if="selectedNode.node.type.attrs.class">
+          <label class="row-label">Classes</label>
+          <input
+            type="text"
+            :value="selectedNode.node.attrs.class"
+            @change="setNodeAttribute(selectedNode.pos, 'class', $event.target.value)"
+          />
+        </div>
+        <TableEditor
+          v-if="tableElementSelected"
           :editor="editor"
-          :context="context"
+          :nodeType="selectedNode.node.type.name"
         />
+        <div v-if="listSelected">
+          <label class="row-label">Type</label>
+          <select
+            :value="selectedNode.node.type.name"
+            @change="setListType($event.target.value)"
+          >
+            <option
+              v-for="type in listTypes"
+              :key="type"
+              :value="type"
+            >{{type}}</option>
+          </select>
+        </div>
+        <div v-if="selectedNode.node.type.name === 'compiledText'">
+          <label class="row-label">Template</label>
+          <input
+            type="text"
+            placeholder="expression"
+            :value="selectedNode.node.attrs.template"
+            @change="setNodeAttribute(selectedNode.pos, 'template', $event.target.value)"
+          >
+        </div>
+        <div v-if="selectedNode.node.type.name === 'text'">
+          <div>
+            <label class="row-label">Classes</label>
+            <input
+              type="text"
+              placeholder="text classes"
+              :value="textClasses"
+              @change="setTextClasses($event.target.value)"
+            />
+          </div>
+          <LinkEditor
+            v-if="linkActive"
+            :editor="editor"
+            :context="context"
+          />
+        </div>
       </div>
     </bubble-menu>
     <floating-menu
@@ -143,7 +157,6 @@ import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
-import { Node as PMNode, NodeType } from 'prosemirror-model'
 import {
   CropIcon,
   LinkIcon,
@@ -155,24 +168,21 @@ import {
   Edit3Icon,
   ChevronRightIcon,
   ChevronDownIcon,
+  CpuIcon,
 } from 'vue-feather-icons'
 import { isEqual } from 'lodash'
-import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import VirtualBook from '@/classes/VirtualBook'
 import { Snippet } from '@/tiptap/Snippet'
 import { TextBlock } from '@/tiptap/TextBlock'
 import { TextClass } from '@/tiptap/TextClass'
 import { OuterBlock } from '@/tiptap/OuterBlock'
 import { EnableAttributes } from '@/tiptap/EnableAttributes'
+import { CompiledText, CompileTextProps } from '@/tiptap/CompiledText'
+import getNodesInRange, { NodeIterationReference } from '@/tiptap/helpers/getNodesInRange'
+import { template, groupBy } from 'lodash'
 import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
 import TableEditor from '@/components/TableEditor.vue'
-import NamedBlockEditor from '@/components/NamedBlockEditor.vue'
-
-export interface NodeReference {
-  position: number;
-  node?: PMNode;
-}
 
 @Component ({
   components: {
@@ -184,7 +194,6 @@ export interface NodeReference {
     LinkIcon,
     LinkEditor,
     TableEditor,
-    NamedBlockEditor,
     TagIcon,
     ListIcon,
     GridIcon,
@@ -193,6 +202,7 @@ export interface NodeReference {
     Edit3Icon,
     ChevronRightIcon,
     ChevronDownIcon,
+    CpuIcon,
   }
 })
 export default class HypertextContentEditor extends Vue {
@@ -216,27 +226,23 @@ export default class HypertextContentEditor extends Vue {
 
   @Prop() placeholder?: string;
 
-  selectionAncestry: NodeReference[] = [];
+  selectionNodes: NodeIterationReference[] = [];
 
-  selectedNode: NodeReference | null = null;
+  get selectionNodeTypes(): Record<string, NodeIterationReference[]> {
+    return groupBy(this.selectionNodes, (ref) => ref.node?.type.name);
+  }
+
+  selectedNode: NodeIterationReference | null = null;
 
   nodeTypeData = {
     textBlock: {
       icon: 'MenuIcon',
-      label: 'Text Block',
     },
     outerBlock: {
       icon: 'CreditCardIcon',
-      label: 'Content Block',
     },
-    bulletList: {
-      label: 'List',
-    },
-    orderedList: {
-      label: 'List',
-    },
-    listItem: {
-      label: 'Item',
+    compiledText: {
+      icon: 'CpuIcon',
     },
   }
 
@@ -258,18 +264,39 @@ export default class HypertextContentEditor extends Vue {
           {
             types: [
               'paragraph',
-              'listItem',
+              'bulletList',
+              'orderedList',
               'table',
               'outerBlock',
               'textBlock',
+              'compiledText',
             ],
             attributes: [
               'id',
               'class',
             ],
           },
+          {
+            types: [
+              'tableRow',
+              'tableCell',
+              'tableHeader',
+            ],
+            attributes: [
+              'class',
+            ],
+          }
         ],
-      })
+      }),
+      CompiledText.configure({
+        context: {
+          Math
+        },
+        compileText: (props: CompileTextProps) => {
+          const parse = template(props.expression);
+          return parse(props.context);
+        }
+      }),
     ],
     onUpdate: () => {
       const doc = this.editor.getJSON();
@@ -277,41 +304,56 @@ export default class HypertextContentEditor extends Vue {
         value: doc.content,
         previousValue: this.content ? this.content.slice() : undefined,
       });
+      this.refreshSelectionData();
     },
     onSelectionUpdate: () => this.refreshSelectionData(),
   });
 
-  get selectionNodeTypes(): Record<string, NodeType> {
-    const map: Record<string, NodeType> = {};
-    this.selectionAncestry.forEach(ref => {
-      if(ref.node) {
-        map[ref.node.type.name] = ref.node.type;
-      }
-    });
-    return map;
-  }
-
   refreshSelectionData(): void {
-    this.selectionAncestry.length = 0;
-    const { $from, $to} = this.editor.state.selection;
-    const maxDepth = Math.min($from.depth, $to.depth);
-    for(let i = 1; i <= maxDepth; i++) {
-      const toPos = $to.before(i);
-      const fromPos = $from.before(i);
-      if(toPos === fromPos) {
-        this.selectionAncestry.push({
-          position: toPos,
-          node: $to.node(i),
-        });
-      } else {
-        break;
-      }
+    const selection = this.editor.state.selection;
+    this.selectionNodes = getNodesInRange(
+      this.editor.state.doc,
+      selection.from,
+      selection.to
+    );
+    if(this.selectedNode) {
+      this.selectedNode = this.selectionNodes.find(
+        ref => ref.pos === this.selectedNode?.pos
+      ) || null;
     }
   }
 
-  get inList(): boolean {
+  getNodeLabel(ref: NodeIterationReference): string {
+    if(ref.node) {
+      if(ref.node.attrs.id) {
+        return ref.node.attrs.id;
+      }
+      if(ref.node.type.name === 'text') {
+        const text = ref.node.text || '';
+        const charLimit = 16;
+        const trimmed = text.length > charLimit
+          ? `${text.substring(0,16)}..`
+          : text;
+        return `"${trimmed}"`
+      }
+      return `(${ref.node.type.name})`;
+    }
+    return 'Missing Node!';
+  }
+
+  listTypes = ['bulletList', 'orderedList'];
+
+  get listInSelection(): boolean {
     return this.selectionNodeTypes['bulletList'] !== undefined
       || this.selectionNodeTypes ['orderedList'] !== undefined;
+  }
+
+  get listSelected(): boolean {
+    const selectedType = this.selectedNode?.node?.type.name || '';
+    if(selectedType) {
+      return this.listTypes.indexOf(selectedType) >= 0;
+    }
+    return false;
   }
 
   toggleList(): void {
@@ -323,29 +365,29 @@ export default class HypertextContentEditor extends Vue {
     this.refreshSelectionData();
   }
 
-  toggleListType(): void {
-    if(this.selectionNodeTypes['bulletList']) {
+  setListType(value: string): void {
+    if(value === 'orderedList') {
       this.editor.chain().focus().toggleBulletList().toggleOrderedList().run();
     } else {
       this.editor.chain().focus().toggleOrderedList().toggleBulletList().run();
     }
-    this.refreshSelectionData();
   }
 
-  get inTable(): boolean {
-    return this.editor.isActive('table');
+  get tableElementSelected(): boolean {
+    const selectedType = this.selectedNode?.node?.type.name || '';
+    if(selectedType) {
+      const tableNodeTypes = ['table', 'tableRow', 'tableCell', 'tableHeader'];
+      return tableNodeTypes.indexOf(selectedType) >= 0;
+    }
+    return false;
   }
 
   insertTable(): void {
     this.editor.chain().focus().insertTable().run();
   }
 
-  get inTextBlock(): boolean {
-    return this.editor.isActive('textBlock');
-  }
-
   toggleTextBlock(): void {
-    if(this.inTextBlock) {
+    if(this.selectionNodeTypes['textBlock']) {
       this.editor.chain().focus().setNode('paragraph').run();
     } else {
       this.editor.chain().focus().setTextBlock().run();
@@ -418,24 +460,29 @@ export default class HypertextContentEditor extends Vue {
     }
   }
 
-  get snippetId(): string {
-    return this.editor.getAttributes('snippet').id;
-  }
-
-  onSnippetIdChange(change: ValueChangeDescription<string>): void {
-    this.editor
-      .chain()
-      .focus()
-      .updateAttributes('snippet', { id: change.value })
-      .run();
-  }
-
   toggleOuterBlock(): void {
     this.editor.chain().focus().toggleOuterBlock().run();
   }
 
-  toggleSelectedNode(ref: NodeReference): void {
-    this.selectedNode = this.selectedNode === ref ? null : ref;
+
+  toggleCompiledText(): void {
+    if(this.selectionNodeTypes['compiledText']) {
+      this.editor.chain().focus().unwrapCompiledText().run();
+    } else {
+      this.editor.chain().focus().wrapAsCompiledText().run();
+    }
+  }
+
+  onSelectNode(value: string): void {
+    const pos = Number(value);
+    this.selectedNode = this.selectionNodes.find(ref => ref.pos === pos) || null;
+  }
+
+  setNodeAttribute(pos: number, key: string, value: string): void {
+    this.editor
+      .chain()
+      .setNodeAttribute(pos, key, value)
+      .run();
   }
 
   beforeDestroy(): void {
@@ -462,6 +509,12 @@ export default class HypertextContentEditor extends Vue {
   background-color silver
 .type-header
   color gray
+.row-label
+  font-weight bold
+  margin-left 2px
+  margin-right 2px
+.row-label:after
+  content ':'
 .flex-row
   display flex
 </style>
