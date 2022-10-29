@@ -1,4 +1,9 @@
-import { Extension, Attribute, CommandProps } from '@tiptap/core'
+import {
+  Extension,
+  Attribute,
+  CommandProps,
+  getMarkType,
+} from '@tiptap/core'
 
 export interface EnableAttributesRule {
   types: string[];
@@ -17,6 +22,16 @@ declare module '@tiptap/core' {
        * are nested elements of the same type, like lists.
        */
       setNodeAttribute: (pos: number, key: string, value: string) => ReturnType,
+      /**
+       * Modifies the attributes of a specific mark.  This helps if there
+       * are nested elements of the same type, like lists.
+       */
+      setMarkAttribute: (
+        pos: number,
+        markName: string,
+        key: string,
+        value: string
+      ) => ReturnType,
     }
   }
 }
@@ -62,6 +77,32 @@ export const EnableAttributes = Extension.create<EnableAttributesOptions>({
         tr.setNodeAttribute(pos, key, value);
         const node = tr.doc.nodeAt(pos);
         return node ? node.attrs[key] === value : false;
+      },
+      setMarkAttribute: (
+        pos: number,
+        typeOrName: string,
+        key: string,
+        value: string
+      ) => ({ tr, state }: CommandProps) => {
+        const node = tr.doc.nodeAt(pos);
+        if(node) {
+          const from = pos;
+          const to = pos + node.nodeSize;
+          const type = getMarkType(typeOrName, state.schema);
+          const attributes = {
+            [key]: value
+          };
+          node.marks.forEach(mark => {
+            if (type === mark.type) {
+              tr.addMark(from, to, type.create({
+                ...mark.attrs,
+                ...attributes,
+              }))
+            }
+          })
+          return true;
+        }
+        return false;
       },
     }
   },

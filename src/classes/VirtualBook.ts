@@ -1,4 +1,4 @@
-import { JSONContent } from '@tiptap/vue-2'
+import { JSONContent } from '@tiptap/core'
 
 export class VirtualBookSection {
   id = '';

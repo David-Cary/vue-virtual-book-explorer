@@ -50,6 +50,7 @@ import VirtualBook from '@/classes/VirtualBook'
 export default class LinkEditor extends Vue {
   @Prop() editor?: Editor;
   @Prop() context?: VirtualBook;
+  @Prop() position?: number;
 
   emptyStringProxy = ' ';
 
@@ -62,11 +63,19 @@ export default class LinkEditor extends Vue {
 
   setURL(value: string): void {
     if(this.editor) {
-      this.editor
-        .chain()
-        .focus()
-        .setLink({ href: value })
-        .run();
+      if(this.position === undefined) {
+        this.editor
+          .chain()
+          .focus()
+          .setLink({ href: value })
+          .run();
+      } else {
+        this.editor
+          .chain()
+          .focus()
+          .setNodeAttribute(this.position, 'url', value)
+          .run();
+      }
     }
   }
 
@@ -148,12 +157,20 @@ export default class LinkEditor extends Vue {
 
   setTarget(value: string): void {
     if(this.editor) {
-      const previousUrl = this.editor.getAttributes('link').href;
-      this.editor
-        .chain()
-        .focus()
-        .setLink({ href: previousUrl, target: value })
-        .run();
+      if(this.position === undefined) {
+        const previousUrl = this.editor.getAttributes('link').href;
+        this.editor
+          .chain()
+          .focus()
+          .setLink({ href: previousUrl, target: value })
+          .run();
+      } else {
+        this.editor
+          .chain()
+          .focus()
+          .setNodeAttribute(this.position, 'target', value)
+          .run();
+      }
     }
   }
 }

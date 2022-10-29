@@ -3,7 +3,7 @@
     <div v-if="editable">
       <div>
         <button
-          :class="{ 'active-tag-button': linkActive }"
+          :class="{ 'active-tag-button': marksInSelection['link'] }"
           @click="toggleLink()"
         >
           <LinkIcon size="1x"/>
@@ -31,19 +31,25 @@
           :class="{ 'active-tag-button': selectionNodeTypes['textBlock'] }"
           @click="toggleTextBlock()"
         >
-          <span :is="nodeTypeData['textBlock'].icon" size="1x"/>
+          <MenuIcon size="1x"/>
         </button>
         <button
           :class="{ 'active-tag-button': selectionNodeTypes['outerBlock'] }"
           @click="toggleOuterBlock()"
         >
-          <span :is="nodeTypeData['outerBlock'].icon" size="1x"/>
+          <CreditCardIcon size="1x"/>
         </button>
         <button
           :class="{ 'active-tag-button': selectionNodeTypes['compiledText'] }"
           @click="toggleCompiledText()"
         >
-          <span :is="nodeTypeData['compiledText'].icon" size="1x"/>
+          <CpuIcon size="1x"/>
+        </button>
+        <button
+          :class="{ 'active-tag-button': marksInSelection['wrappedValue'] }"
+          @click="toggleWrappedValue()"
+        >
+          <AirplayIcon size="1x"/>
         </button>
       </div>
       <div v-if="selectionNodes.length">
@@ -114,10 +120,36 @@
             />
           </div>
           <LinkEditor
-            v-if="linkActive"
+            v-if="selectedMarks['link']"
             :editor="editor"
             :context="context"
+            :position="selectedNode.pos"
           />
+        </div>
+        <div v-if="selectedMarks['wrappedValue']" class="property-card">
+          <label class="tab-label">Wrapped Value</label>
+          <div class="selected-node-property-pane">
+            <div>
+              <label class="row-label">Name</label>
+              <input
+                type="text"
+                :value="selectedMarks['wrappedValue'].attrs.name"
+                @change="setMarkAttribute(selectedNode.pos, 'wrappedValue', 'name', $event.target.value)"
+              >
+            </div>
+              <label class="row-label">Type</label>
+              <select
+                :value="selectedMarks['wrappedValue'].attrs.type"
+                @change="setMarkAttribute(selectedNode.pos, 'wrappedValue', 'type', $event.target.value)"
+              >
+                <option
+                  v-for="type in wrappedValueTypes"
+                  :key="type"
+                >{{type}}</option>
+              </select>
+            <div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -144,6 +176,7 @@ import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
+import { Mark } from 'prosemirror-model'
 import {
   CropIcon,
   LinkIcon,
@@ -156,6 +189,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   CpuIcon,
+  AirplayIcon,
 } from 'vue-feather-icons'
 import { isEqual } from 'lodash'
 import VirtualBook from '@/classes/VirtualBook'
@@ -165,6 +199,11 @@ import { TextClass } from '@/tiptap/TextClass'
 import { OuterBlock } from '@/tiptap/OuterBlock'
 import { EnableAttributes } from '@/tiptap/EnableAttributes'
 import { CompiledText, CompileTextProps } from '@/tiptap/CompiledText'
+import {
+  WrappedValue,
+  findJSONValue,
+  parseJSONValue,
+} from '@/tiptap/WrappedValue'
 import getNodesInRange, { NodeIterationReference } from '@/tiptap/helpers/getNodesInRange'
 import { template, groupBy } from 'lodash'
 import IdField from '@/components/IdField.vue'
@@ -188,6 +227,7 @@ import TableEditor from '@/components/TableEditor.vue'
     ChevronRightIcon,
     ChevronDownIcon,
     CpuIcon,
+    AirplayIcon,
   }
 })
 export default class HypertextContentEditor extends Vue {
@@ -218,18 +258,6 @@ export default class HypertextContentEditor extends Vue {
   }
 
   selectedNode: NodeIterationReference | null = null;
-
-  nodeTypeData = {
-    textBlock: {
-      icon: 'MenuIcon',
-    },
-    outerBlock: {
-      icon: 'CreditCardIcon',
-    },
-    compiledText: {
-      icon: 'CpuIcon',
-    },
-  }
 
   editor = new Editor({
     content: '',
@@ -275,13 +303,28 @@ export default class HypertextContentEditor extends Vue {
       }),
       CompiledText.configure({
         context: {
-          Math
+          Math,
+          unwrapValue: (path: string[], source?: JSONContent[]) => {
+            if(!source && this.content) {
+              source = this.content;
+            }
+            if(source) {
+              const item = findJSONValue(source, path);
+              if(item) {
+                const parsed = parseJSONValue(item);
+                return parsed;
+              }
+              return 'Value Not Found';
+            }
+            return 'No Source';
+          },
         },
         compileText: (props: CompileTextProps) => {
           const parse = template(props.expression);
           return parse(props.context);
         }
       }),
+      WrappedValue,
     ],
     onUpdate: () => {
       const doc = this.editor.getJSON();
@@ -307,6 +350,12 @@ export default class HypertextContentEditor extends Vue {
       ) || null;
     }
   }
+
+  wrappedValueTypes = [
+    'number',
+    'object',
+    'string',
+  ];
 
   getNodeLabel(ref: NodeIterationReference): string {
     if(ref.node) {
@@ -400,12 +449,8 @@ export default class HypertextContentEditor extends Vue {
     }
   }
 
-  get linkActive(): boolean {
-    return this.editor.isActive('link');
-  }
-
   toggleLink(): void {
-    if(this.linkActive) {
+    if(this.marksInSelection['link']) {
       this.editor
         .chain()
         .focus()
@@ -425,6 +470,7 @@ export default class HypertextContentEditor extends Vue {
     if(this.snippetActive) return true;
     return this.editor.can().setSnippet({ id: '' });
   }
+
   get snippetActive(): boolean {
     return this.editor.isActive('snippet');
   }
@@ -458,9 +504,65 @@ export default class HypertextContentEditor extends Vue {
     }
   }
 
+  toggleWrappedValue(): void {
+    if(this.marksInSelection['wrappedValue']) {
+      this.editor
+        .chain()
+        .focus()
+        .extendMarkRange('wrappedValue')
+        .unsetWrappedValue()
+        .run();
+    } else {
+      this.editor
+        .chain()
+        .focus()
+        .setWrappedValue({})
+        .run();
+    }
+  }
+
   onSelectNode(value: string): void {
     const pos = Number(value);
     this.selectedNode = this.selectionNodes.find(ref => ref.pos === pos) || null;
+  }
+
+  get selectedMarks(): Record<string, Mark> {
+    const markMap: Record<string, Mark> = {};
+    if(this.selectedNode?.node) {
+      for(const mark of this.selectedNode.node.marks) {
+        markMap[mark.type.name] = mark;
+      }
+    }
+    return markMap;
+  }
+
+  get marksInSelection(): Record<string, Mark[]> {
+    const markMap: Record<string, Mark[]> = {};
+    for(const ref of this.selectionNodes) {
+      if(ref.node) {
+        for(const mark of ref.node.marks) {
+          const key = mark.type.name;
+          if(!markMap[key]) {
+            markMap[key] = []
+          }
+          markMap[mark.type.name].push(mark);
+        }
+      }
+    }
+    return markMap;
+  }
+
+  setMarkAttribute(
+    pos: number,
+    markName: string,
+    key: string,
+    value: string
+  ): void {
+    this.editor
+      .chain()
+      .focus()
+      .setMarkAttribute(pos, markName, key, value)
+      .run();
   }
 
   setNodeAttribute(pos: number, key: string, value: string): void {
@@ -502,6 +604,14 @@ export default class HypertextContentEditor extends Vue {
   margin-right 2px
 .row-label:after
   content ':'
+.property-card
+  margin 4px
+.tab-label
+  font-weight bold
+  padding-left 8px
+  padding-right 8px
+  border 1px solid silver
+  border-radius 8px 8px 0 0
 .flex-row
   display flex
 </style>

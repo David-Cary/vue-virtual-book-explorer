@@ -56,14 +56,6 @@ export const CompiledText = Node.create<CompiledTextOptions>({
     return {
       template: {
         default: '',
-        parseHTML: element => element.getAttribute('template'),
-        renderHTML: attributes => {
-          const resolved: Record<string, string> = {};
-          if(attributes.template) {
-            resolved.template = attributes.template;
-          }
-          return resolved;
-        },
       },
     }
   },
@@ -82,13 +74,19 @@ export const CompiledText = Node.create<CompiledTextOptions>({
       HTMLAttributes,
       { 'data-type': this.name }
     );
+    let text;
+    try {
+      text = this.options.compileText({
+        expression: attributes.template,
+        context: this.options.context,
+      });
+    } catch (error) {
+      text = error.message;
+    }
     return [
       'span',
       attributes,
-      this.options.compileText({
-        expression: attributes.template,
-        context: this.options.context,
-      })
+      text
     ];
   },
 
