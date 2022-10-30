@@ -16,10 +16,13 @@ export interface WrappedValueOptions {
   HTMLAttributes: Record<string, unknown>,
 }
 
-export const attributeAliases = {
-  name: 'data-value-name',
-  type: 'data-value-type',
-};
+function renderAliasedAttribute(key: string, value: unknown) {
+  const resolved: Record<string, unknown> = {};
+  if(value != undefined) {
+    resolved[key] = value;
+  }
+  return resolved;
+}
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -57,25 +60,27 @@ export const WrappedValue = Mark.create<WrappedValueOptions>({
     return {
       name: {
         default: '',
-        parseHTML: element => element.getAttribute(attributeAliases.name),
-        renderHTML: attributes => {
-          const resolved: Record<string, string> = {};
-          if(attributes.name) {
-            resolved[attributeAliases.name] = attributes.name;
-          }
-          return resolved;
-        },
+        parseHTML: element => element.getAttribute('data-value-name'),
+        renderHTML: attributes => renderAliasedAttribute(
+          'data-value-name',
+          attributes.name
+        ),
       },
       type: {
         default: 'string',
-        parseHTML: element => element.getAttribute(attributeAliases.type),
-        renderHTML: attributes => {
-          const resolved: Record<string, string> = {};
-          if(attributes.type) {
-            resolved[attributeAliases.type] = attributes.type;
-          }
-          return resolved;
-        },
+        parseHTML: element => element.getAttribute('data-value-type'),
+        renderHTML: attributes => renderAliasedAttribute(
+          'data-value-type',
+          attributes.type
+        ),
+      },
+      value: {
+        default: undefined,
+        parseHTML: element => element.getAttribute('data-value'),
+        renderHTML: attributes => renderAliasedAttribute(
+          'data-value',
+          attributes.value
+        ),
       },
     }
   },
@@ -149,6 +154,9 @@ export function parseWrappedValue(source: Node): unknown {
         && mark.attrs?.type
     );
     if(matchedMark) {
+      if(matchedMark.attrs.value !== undefined) {
+        return matchedMark.attrs.value;
+      }
       valueType = matchedMark.attrs?.type;
     }
   }

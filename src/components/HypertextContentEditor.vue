@@ -150,7 +150,7 @@
               <label class="row-label">Type</label>
               <select
                 :value="selectedMarks['wrappedValue'].attrs.type"
-                @change="setMarkAttribute(selectedNode.pos, 'wrappedValue', 'type', $event.target.value)"
+                @change="onWrappedValueTypeChange($event.target.value)"
               >
                 <option
                   v-for="type in wrappedValueTypes"
@@ -158,6 +158,13 @@
                 >{{type}}</option>
               </select>
             <div>
+              <label class="row-label">Value</label>
+              <input
+                type="text"
+                :placeholder="selectedNode.node.text"
+                :value="stringify(selectedMarks['wrappedValue'].attrs.value)"
+                @change="onWrappedValueChange($event.target.value)"
+              >
             </div>
           </div>
         </div>
@@ -525,6 +532,53 @@ export default class HypertextContentEditor extends Vue {
     }
   }
 
+  onWrappedValueChange(value: string): void {
+    const mark = this.selectedMarks['wrappedValue'];
+    if(this.selectedNode && mark) {
+      const currentValue = mark.attrs.value;
+      const parsedValue = value
+        ? this.convertValue(
+          value,
+          mark.attrs.type,
+          currentValue
+        )
+        : undefined;
+      if(parsedValue !== currentValue) {
+        this.setMarkAttribute(
+          this.selectedNode.pos,
+          'wrappedValue',
+          'value',
+          parsedValue
+        );
+      }
+    }
+  }
+
+  onWrappedValueTypeChange(type:string): void {
+    const mark = this.selectedMarks['wrappedValue'];
+    if(this.selectedNode && mark) {
+      this.setMarkAttribute(
+        this.selectedNode.pos,
+        'wrappedValue',
+        'type',
+        type
+      );
+      const currentValue = mark.attrs.value;
+      if(currentValue !== undefined) {
+        const convertedValue = this.convertValue(
+          currentValue,
+          type
+        );
+        this.setMarkAttribute(
+          this.selectedNode.pos,
+          'wrappedValue',
+          'value',
+          convertedValue
+        );
+      }
+    }
+  }
+
   onSelectNode(value: string): void {
     const pos = Number(value);
     this.selectedNode = this.selectionNodes.find(ref => ref.pos === pos) || null;
@@ -560,7 +614,7 @@ export default class HypertextContentEditor extends Vue {
     pos: number,
     markName: string,
     key: string,
-    value: string
+    value: unknown
   ): void {
     this.editor
       .chain()
@@ -580,6 +634,43 @@ export default class HypertextContentEditor extends Vue {
     if(ref.node?.attrs) {
       const value = ref.node.attrs[key];
       this.setNodeAttribute(ref.pos, key, !value);
+    }
+  }
+
+  stringify(value: unknown): string {
+    switch(typeof value) {
+      case 'object':
+        if(value) {
+          return JSON.stringify(value);
+        }
+        return '';
+      case 'undefined':
+        return '';
+    }
+    return String(value);
+  }
+
+  convertValue(
+    source: unknown,
+    type: string,
+    defaultValue?: unknown
+  ): unknown {
+    switch(type) {
+      case 'number':
+        return Number(source);
+      case 'string':
+        return String(source);
+      default:
+        try {
+          const text = String(source);
+          return JSON.parse(text);
+        } catch(error) {
+          console.log(error)
+          if(type === 'object') {
+            return defaultValue;
+          }
+          return null;
+        }
     }
   }
 
