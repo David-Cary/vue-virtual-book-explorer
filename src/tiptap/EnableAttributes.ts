@@ -21,7 +21,7 @@ declare module '@tiptap/core' {
        * Modifies the attributes of a specific node.  This helps if there
        * are nested elements of the same type, like lists.
        */
-      setNodeAttribute: (pos: number, key: string, value: string) => ReturnType,
+      setNodeAttribute: (pos: number, key: string, value: unknown) => ReturnType,
       /**
        * Modifies the attributes of a specific mark.  This helps if there
        * are nested elements of the same type, like lists.
@@ -30,7 +30,7 @@ declare module '@tiptap/core' {
         pos: number,
         markName: string,
         key: string,
-        value: string
+        value: unknown
       ) => ReturnType,
     }
   }
@@ -72,7 +72,7 @@ export const EnableAttributes = Extension.create<EnableAttributesOptions>({
       setNodeAttribute: (
         pos: number,
         key: string,
-        value: string
+        value: unknown
       ) => ({ tr }: CommandProps) => {
         tr.setNodeAttribute(pos, key, value);
         const node = tr.doc.nodeAt(pos);
@@ -82,7 +82,7 @@ export const EnableAttributes = Extension.create<EnableAttributesOptions>({
         pos: number,
         typeOrName: string,
         key: string,
-        value: string
+        value: unknown
       ) => ({ tr, state }: CommandProps) => {
         const node = tr.doc.nodeAt(pos);
         if(node) {

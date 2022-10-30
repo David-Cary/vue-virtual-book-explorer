@@ -57,6 +57,9 @@ export const CompiledText = Node.create<CompiledTextOptions>({
       template: {
         default: '',
       },
+      'refresh-on-update': {
+        default: false,
+      },
     }
   },
 
@@ -74,20 +77,46 @@ export const CompiledText = Node.create<CompiledTextOptions>({
       HTMLAttributes,
       { 'data-type': this.name }
     );
-    let text;
-    try {
-      text = this.options.compileText({
-        expression: attributes.template,
-        context: this.options.context,
-      });
-    } catch (error) {
-      text = error.message;
-    }
     return [
       'span',
       attributes,
-      text
+      compileText(attributes.template, this.options)
     ];
+  },
+
+  addNodeView() {
+    return ({ node, editor }) => {
+
+      const dom = document.createElement('span');
+      dom.setAttribute('data-type', this.name);
+
+      const updateDom = () => {
+        for(const key in node.attrs) {
+          const value = node.attrs[key];
+          if(value !== null) {
+            dom.setAttribute(key, value);
+          }
+        }
+        dom.innerText = compileText(node.attrs.template, this.options);
+      };
+      updateDom();
+
+      const updateCallback = () => {
+        if(node.attrs['refresh-on-update']) {
+          updateDom();
+        }
+      };
+
+      editor.on('update', updateCallback);
+
+      return {
+        dom,
+        update: updateDom,
+        destroy: () => {
+          editor.off('update', updateCallback);
+        },
+      }
+    }
   },
 
   addCommands() {
@@ -119,3 +148,17 @@ export const CompiledText = Node.create<CompiledTextOptions>({
     }
   },
 })
+
+export function compileText(
+  expression: string,
+  options: CompiledTextOptions
+): string {
+  try {
+    return options.compileText({
+      expression,
+      context: options.context,
+    });
+  } catch (error) {
+    return error.message;
+  }
+}

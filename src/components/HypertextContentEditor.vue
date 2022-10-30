@@ -101,13 +101,23 @@
           </select>
         </div>
         <div v-if="selectedNode.node.type.name === 'compiledText'">
-          <label class="row-label">Template</label>
-          <input
-            type="text"
-            placeholder="expression"
-            :value="selectedNode.node.attrs.template"
-            @change="setNodeAttribute(selectedNode.pos, 'template', $event.target.value)"
-          >
+          <div>
+            <label class="row-label">Template</label>
+            <input
+              type="text"
+              placeholder="expression"
+              :value="selectedNode.node.attrs.template"
+              @change="setNodeAttribute(selectedNode.pos, 'template', $event.target.value)"
+            >
+          </div>
+          <div>
+            <input
+              type="checkbox"
+              :checked="selectedNode.node.attrs['refresh-on-update']"
+              @change="toggleNodeAttribute(selectedNode, 'refresh-on-update')"
+            >
+            <label>Refresh on Update</label>
+          </div>
         </div>
         <div v-if="selectedNode.node.type.name === 'text'">
           <div>
@@ -201,8 +211,8 @@ import { EnableAttributes } from '@/tiptap/EnableAttributes'
 import { CompiledText, CompileTextProps } from '@/tiptap/CompiledText'
 import {
   WrappedValue,
-  findJSONValue,
-  parseJSONValue,
+  findWrappedValue,
+  parseWrappedValue,
 } from '@/tiptap/WrappedValue'
 import getNodesInRange, { NodeIterationReference } from '@/tiptap/helpers/getNodesInRange'
 import { template, groupBy } from 'lodash'
@@ -304,19 +314,13 @@ export default class HypertextContentEditor extends Vue {
       CompiledText.configure({
         context: {
           Math,
-          unwrapValue: (path: string[], source?: JSONContent[]) => {
-            if(!source && this.content) {
-              source = this.content;
-            }
+          unwrapValue: (path: string[]) => {
+            const source = findWrappedValue(this.editor.state.doc, path);
             if(source) {
-              const item = findJSONValue(source, path);
-              if(item) {
-                const parsed = parseJSONValue(item);
-                return parsed;
-              }
-              return 'Value Not Found';
+              const parsed = parseWrappedValue(source);
+              return parsed;
             }
-            return 'No Source';
+            return source;
           },
         },
         compileText: (props: CompileTextProps) => {
@@ -565,11 +569,18 @@ export default class HypertextContentEditor extends Vue {
       .run();
   }
 
-  setNodeAttribute(pos: number, key: string, value: string): void {
+  setNodeAttribute(pos: number, key: string, value: unknown): void {
     this.editor
       .chain()
       .setNodeAttribute(pos, key, value)
       .run();
+  }
+
+  toggleNodeAttribute(ref: NodeIterationReference, key: string): void {
+    if(ref.node?.attrs) {
+      const value = ref.node.attrs[key];
+      this.setNodeAttribute(ref.pos, key, !value);
+    }
   }
 
   beforeDestroy(): void {

@@ -3,6 +3,7 @@ import {
   mergeAttributes,
   JSONContent,
 } from '@tiptap/core'
+import { Node } from 'prosemirror-model'
 
 export type WrappedValueTypes = 'string' | 'number' | 'object';
 
@@ -112,6 +113,73 @@ export const WrappedValue = Mark.create<WrappedValueOptions>({
   },
 
 })
+
+export function findWrappedValue(
+  source: Node,
+  path: string[],
+): Node | null {
+  if(path.length) {
+    for(let i = 0; i < source.childCount; i++) {
+      const node = source.child(i);
+      if(node.marks) {
+        const matchedMark = node.marks.find(
+          mark => mark.type.name === 'wrappedValue'
+            && mark.attrs?.name === path[0]
+        );
+        if(matchedMark) {
+          const subpath = path.slice(1);
+          return findWrappedValue(node, subpath);
+        }
+      }
+      const contentMatch = findWrappedValue(node, path);
+      if(contentMatch) {
+        return contentMatch;
+      }
+    }
+    return null;
+  }
+  return source;
+}
+
+export function parseWrappedValue(source: Node): unknown {
+  let valueType = 'string';
+  if(source.marks) {
+    const matchedMark = source.marks.find(
+      mark => mark.type.name === 'wrappedValue'
+        && mark.attrs?.type
+    );
+    if(matchedMark) {
+      valueType = matchedMark.attrs?.type;
+    }
+  }
+  switch(valueType) {
+    case 'number':
+      return Number(source.text);
+    case 'object':
+      return buildWrappedValueObject(source);
+    default:
+      return source.text;
+  }
+}
+
+export function buildWrappedValueObject(
+  source: Node,
+  destination: Record<string, unknown> = {}
+): Record<string, unknown> {
+  source.descendants(node => {
+    const matchedMark = node.marks.find(
+      mark => mark.type.name === 'wrappedValue'
+    );
+    if(matchedMark) {
+      const propertyName = matchedMark.attrs?.name;
+      if(propertyName) {
+        destination[propertyName] = parseWrappedValue(node);
+        return false;
+      }
+    }
+  });
+  return destination;
+}
 
 export function findJSONValue(
   source: JSONContent[],
