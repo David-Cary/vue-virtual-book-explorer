@@ -45,12 +45,6 @@
         >
           <CpuIcon size="1x"/>
         </button>
-        <button
-          :class="{ 'active-tag-button': marksInSelection['wrappedValue'] }"
-          @click="toggleWrappedValue()"
-        >
-          <AirplayIcon size="1x"/>
-        </button>
       </div>
       <div v-if="selectionNodes.length">
         <select
@@ -80,6 +74,41 @@
             type="text"
             :value="selectedNode.node.attrs.class"
             @change="setNodeAttribute(selectedNode.pos, 'class', $event.target.value)"
+          />
+        </div>
+        <div v-if="selectedNode.node.type.attrs.localName">
+          <label class="row-label">Local Name</label>
+          <IdField
+            :source="context"
+            :value="selectedNode.node.attrs.localName"
+            @change="setNodeAttribute(selectedNode.pos, 'localName', $event.value || undefined)"
+          />
+        </div>
+        <div v-if="selectedNode.node.type.attrs.evaluateAs">
+          <input
+            type="checkbox"
+            :checked="selectedNode.node.attrs.evaluateAs"
+            @change="toggleEvaluated(selectedNode)"
+          >
+          <span>Evaluated</span>
+          <span v-if="selectedNode.node.attrs.evaluateAs">
+            as
+            <select
+              :value="selectedNode.node.attrs.evaluateAs"
+              @change="setNodeAttribute(selectedNode.pos, 'evaluateAs', $event.target.value)"
+            >
+              <option
+                v-for="key in evaluatorKeys"
+                :key="key"
+              >{{key}}</option>
+            </select>
+          </span>
+        </div>
+        <div v-if="selectedNode.node.type.attrs.hiddenValue" class="flex-row">
+          <label class="row-label">Hidden Value</label>
+          <JSValueEditor
+            :value="selectedNode.node.attrs.hiddenValue"
+            @change="onHiddenValueChange(selectedNode, $event)"
           />
         </div>
         <TableEditor
@@ -136,38 +165,6 @@
             :position="selectedNode.pos"
           />
         </div>
-        <div v-if="selectedMarks['wrappedValue']" class="property-card">
-          <label class="tab-label">Wrapped Value</label>
-          <div class="selected-node-property-pane">
-            <div>
-              <label class="row-label">Name</label>
-              <input
-                type="text"
-                :value="selectedMarks['wrappedValue'].attrs.name"
-                @change="setMarkAttribute(selectedNode.pos, 'wrappedValue', 'name', $event.target.value)"
-              >
-            </div>
-              <label class="row-label">Type</label>
-              <select
-                :value="selectedMarks['wrappedValue'].attrs.type"
-                @change="onWrappedValueTypeChange($event.target.value)"
-              >
-                <option
-                  v-for="type in wrappedValueTypes"
-                  :key="type"
-                >{{type}}</option>
-              </select>
-            <div>
-              <label class="row-label">Value</label>
-              <input
-                type="text"
-                :placeholder="selectedNode.node.text"
-                :value="stringify(selectedMarks['wrappedValue'].attrs.value)"
-                @change="onWrappedValueChange($event.target.value)"
-              >
-            </div>
-          </div>
-        </div>
       </div>
     </div>
     <div
@@ -186,6 +183,8 @@ import {
   Editor,
   EditorContent,
   JSONContent,
+  NodeWithPos,
+  findChildrenInRange,
 } from '@tiptap/vue-2'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -208,7 +207,11 @@ import {
   CpuIcon,
   AirplayIcon,
 } from 'vue-feather-icons'
-import { isEqual } from 'lodash'
+import {
+  isEqual,
+  clone,
+  set,
+} from 'lodash'
 import VirtualBook from '@/classes/VirtualBook'
 import { Snippet } from '@/tiptap/Snippet'
 import { TextBlock } from '@/tiptap/TextBlock'
@@ -217,15 +220,17 @@ import { OuterBlock } from '@/tiptap/OuterBlock'
 import { EnableAttributes } from '@/tiptap/EnableAttributes'
 import { CompiledText, CompileTextProps } from '@/tiptap/CompiledText'
 import {
-  WrappedValue,
-  findWrappedValue,
-  parseWrappedValue,
-} from '@/tiptap/WrappedValue'
-import getNodesInRange, { NodeIterationReference } from '@/tiptap/helpers/getNodesInRange'
+  ValueNodes,
+  defaultEvaluators,
+  getNestedValueNode,
+  getNodeValue,
+} from '@/tiptap/extensions/ValueNodes'
 import { template, groupBy } from 'lodash'
+import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
 import TableEditor from '@/components/TableEditor.vue'
+import JSValueEditor from '@/components/JSValueEditor.vue'
 
 @Component ({
   components: {
@@ -235,6 +240,7 @@ import TableEditor from '@/components/TableEditor.vue'
     LinkIcon,
     LinkEditor,
     TableEditor,
+    JSValueEditor,
     TagIcon,
     ListIcon,
     GridIcon,
@@ -268,13 +274,15 @@ export default class HypertextContentEditor extends Vue {
 
   @Prop() placeholder?: string;
 
-  selectionNodes: NodeIterationReference[] = [];
+  selectionNodes: NodeWithPos[] = [];
 
-  get selectionNodeTypes(): Record<string, NodeIterationReference[]> {
+  get selectionNodeTypes(): Record<string, NodeWithPos[]> {
     return groupBy(this.selectionNodes, (ref) => ref.node?.type.name);
   }
 
-  selectedNode: NodeIterationReference | null = null;
+  selectedNode: NodeWithPos | null = null;
+
+  evaluatorKeys = Object.keys(defaultEvaluators).sort();
 
   editor = new Editor({
     content: '',
@@ -318,16 +326,26 @@ export default class HypertextContentEditor extends Vue {
           }
         ],
       }),
+      ValueNodes.configure({
+        types: [
+          'snippet',
+          'outerBlock'
+        ]
+      }),
       CompiledText.configure({
         context: {
           Math,
-          unwrapValue: (path: string[]) => {
-            const source = findWrappedValue(this.editor.state.doc, path);
-            if(source) {
-              const parsed = parseWrappedValue(source);
-              return parsed;
+          Boolean,
+          Number,
+          String,
+          Array,
+          Object,
+          getLocalValue: (path: string[]) => {
+            const node = getNestedValueNode(this.editor.state.doc, path);
+            if(node) {
+              return getNodeValue(node);
             }
-            return source;
+            return undefined;
           },
         },
         compileText: (props: CompileTextProps) => {
@@ -335,7 +353,6 @@ export default class HypertextContentEditor extends Vue {
           return parse(props.context);
         }
       }),
-      WrappedValue,
     ],
     onUpdate: () => {
       const doc = this.editor.getJSON();
@@ -350,10 +367,13 @@ export default class HypertextContentEditor extends Vue {
 
   refreshSelectionData(): void {
     const selection = this.editor.state.selection;
-    this.selectionNodes = getNodesInRange(
+    this.selectionNodes = findChildrenInRange(
       this.editor.state.doc,
-      selection.from,
-      selection.to
+      {
+        from: selection.from,
+        to: selection.to
+      },
+      node => node !== undefined
     );
     if(this.selectedNode) {
       this.selectedNode = this.selectionNodes.find(
@@ -362,13 +382,7 @@ export default class HypertextContentEditor extends Vue {
     }
   }
 
-  wrappedValueTypes = [
-    'number',
-    'object',
-    'string',
-  ];
-
-  getNodeLabel(ref: NodeIterationReference): string {
+  getNodeLabel(ref: NodeWithPos): string {
     if(ref.node) {
       if(ref.node.attrs.id) {
         return ref.node.attrs.id;
@@ -515,67 +529,21 @@ export default class HypertextContentEditor extends Vue {
     }
   }
 
-  toggleWrappedValue(): void {
-    if(this.marksInSelection['wrappedValue']) {
-      this.editor
-        .chain()
-        .focus()
-        .extendMarkRange('wrappedValue')
-        .unsetWrappedValue()
-        .run();
+  toggleEvaluated(ref: NodeWithPos): void {
+    const newValue = ref.node.attrs.evaluateAs ? undefined : 'text';
+    this.setNodeAttribute(ref.pos, 'evaluateAs', newValue);
+  }
+
+  onHiddenValueChange(
+    ref: NodeWithPos,
+    event: ValueChangeDescription<unknown>
+  ): void {
+    if(event.path) {
+      const value = clone(ref.node.attrs.hiddenValue);
+      set(value, event.path, event.value);
+      this.setNodeAttribute(ref.pos, 'hiddenValue', value);
     } else {
-      this.editor
-        .chain()
-        .focus()
-        .setWrappedValue({})
-        .run();
-    }
-  }
-
-  onWrappedValueChange(value: string): void {
-    const mark = this.selectedMarks['wrappedValue'];
-    if(this.selectedNode && mark) {
-      const currentValue = mark.attrs.value;
-      const parsedValue = value
-        ? this.convertValue(
-          value,
-          mark.attrs.type,
-          currentValue
-        )
-        : undefined;
-      if(parsedValue !== currentValue) {
-        this.setMarkAttribute(
-          this.selectedNode.pos,
-          'wrappedValue',
-          'value',
-          parsedValue
-        );
-      }
-    }
-  }
-
-  onWrappedValueTypeChange(type:string): void {
-    const mark = this.selectedMarks['wrappedValue'];
-    if(this.selectedNode && mark) {
-      this.setMarkAttribute(
-        this.selectedNode.pos,
-        'wrappedValue',
-        'type',
-        type
-      );
-      const currentValue = mark.attrs.value;
-      if(currentValue !== undefined) {
-        const convertedValue = this.convertValue(
-          currentValue,
-          type
-        );
-        this.setMarkAttribute(
-          this.selectedNode.pos,
-          'wrappedValue',
-          'value',
-          convertedValue
-        );
-      }
+      this.setNodeAttribute(ref.pos, 'hiddenValue', event.value);
     }
   }
 
@@ -630,7 +598,7 @@ export default class HypertextContentEditor extends Vue {
       .run();
   }
 
-  toggleNodeAttribute(ref: NodeIterationReference, key: string): void {
+  toggleNodeAttribute(ref: NodeWithPos, key: string): void {
     if(ref.node?.attrs) {
       const value = ref.node.attrs[key];
       this.setNodeAttribute(ref.pos, key, !value);
