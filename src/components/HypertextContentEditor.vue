@@ -219,6 +219,7 @@ import { TextClass } from '@/tiptap/TextClass'
 import { OuterBlock } from '@/tiptap/OuterBlock'
 import { EnableAttributes } from '@/tiptap/EnableAttributes'
 import { CompiledText, CompileTextProps } from '@/tiptap/CompiledText'
+import { IdentifiedNodes } from '@/tiptap/extensions/IdentifiedNodes'
 import {
   ValueNodes,
   defaultEvaluators,
@@ -324,6 +325,17 @@ export default class HypertextContentEditor extends Vue {
               'class',
             ],
           }
+        ],
+      }),
+      IdentifiedNodes.configure({
+        types: [
+          'paragraph',
+          'bulletList',
+          'orderedList',
+          'table',
+          'outerBlock',
+          'textBlock',
+          'compiledText',
         ],
       }),
       ValueNodes.configure({
@@ -492,8 +504,9 @@ export default class HypertextContentEditor extends Vue {
   }
 
   get snippetPossible(): boolean {
-    if(this.snippetActive) return true;
-    return this.editor.can().setSnippet({ id: '' });
+    //if(this.snippetActive) return true;
+    //return this.editor.can().setSnippet();
+    return true
   }
 
   get snippetActive(): boolean {
@@ -501,19 +514,11 @@ export default class HypertextContentEditor extends Vue {
   }
 
   toggleSnippet(): void {
-    if(this.snippetActive) {
-      this.editor
-        .chain()
-        .focus()
-        .releaseSnippet()
-        .run();
-    } else {
-      this.editor
-        .chain()
-        .focus()
-        .setSnippet({ id: '' })
-        .run();
-    }
+    this.editor
+      .chain()
+      .focus()
+      .toggleSnippet()
+      .run();
   }
 
   toggleOuterBlock(): void {
@@ -633,7 +638,6 @@ export default class HypertextContentEditor extends Vue {
           const text = String(source);
           return JSON.parse(text);
         } catch(error) {
-          console.log(error)
           if(type === 'object') {
             return defaultValue;
           }
