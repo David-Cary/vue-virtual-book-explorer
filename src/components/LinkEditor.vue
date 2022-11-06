@@ -73,7 +73,7 @@ export default class LinkEditor extends Vue {
         this.editor
           .chain()
           .focus()
-          .setNodeAttribute(this.position, 'url', value)
+          .setMarkAttribute(this.position, 'link', 'href', value)
           .run();
       }
     }
@@ -168,7 +168,7 @@ export default class LinkEditor extends Vue {
         this.editor
           .chain()
           .focus()
-          .setNodeAttribute(this.position, 'target', value)
+          .setMarkAttribute(this.position, 'link', 'target', value)
           .run();
       }
     }
