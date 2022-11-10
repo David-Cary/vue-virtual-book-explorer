@@ -266,10 +266,10 @@ export function findEnclosingParent(
   for(let i = maxDepth; i > 0; i--) {
     if(sharedAncestor) {
       if(predicate(sharedAncestor)) {
-        const selectionDepth = $from.nodeBefore || $to.nodeAfter ? i + 1 : i;
+        //const selectionDepth = $from.nodeBefore || $to.nodeAfter ? i + 1 : i;
         return {
-          from: $from.start(selectionDepth),
-          to: $from.end(selectionDepth),
+          from: $from.start(i),
+          to: $from.end(i),
           node: sharedAncestor
         };
       } else {

@@ -139,6 +139,7 @@ import VirtualBook, {
   VirtualBookContentSearchOptions,
   VirtualBookContentReference,
   PathStep,
+  VirtualBookDerivedData,
 } from '@/classes/VirtualBook'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
@@ -209,6 +210,10 @@ export default class VirtualBookExplorer extends Vue {
 
   get targetContent(): VirtualBookContentReference | null {
     return this.matchingContent?.length ? this.matchingContent[0] : null;
+  }
+
+  get derivedData(): VirtualBookDerivedData | null {
+    return this.model?.derivedData || null;
   }
 
   onClickRevert(): void {

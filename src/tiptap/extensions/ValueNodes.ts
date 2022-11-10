@@ -1,15 +1,22 @@
 import {
   Extension,
-  Attribute,
   mergeAttributes,
+  NodeWithPos,
+  findParentNodeClosestToPos,
 } from '@tiptap/core'
 import { Node } from 'prosemirror-model'
+import {
+  createAttribute,
+  stringify,
+  destringify
+} from '@/tiptap/helpers/createAttribute'
 
 export interface ValueNodesOptions {
   types: string[];
 }
 
 export interface ValueNodeAttributes {
+  globalName: string;
   localName: string;
   evaluateAs: string;
   hiddenValue: unknown;
@@ -47,8 +54,18 @@ export const ValueNodes = Extension.create<ValueNodesOptions>({
       {
         types: this.options.types,
         attributes: {
-          localName: createAliasedAttribute('localName', 'data-local-name'),
-          evaluateAs: createAliasedAttribute('evaluateAs', 'data-evaluate-as'),
+          globalName: createAttribute<string>({
+            name: 'globalName',
+            DOMName: 'data-global-name',
+          }),
+          localName: createAttribute<string>({
+            name: 'localName',
+            DOMName: 'data-local-name',
+          }),
+          evaluateAs: createAttribute<string>({
+            name: 'evaluateAs',
+            DOMName: 'data-evaluate-as'
+          }),
           hiddenValue: {
             default: undefined,
             parseHTML: element => {
@@ -134,76 +151,6 @@ export const ValueNodes = Extension.create<ValueNodesOptions>({
   },
 });
 
-export function createAliasedAttribute(
-  attributeName: string,
-  domAttribute: string,
-  defaultValue?: unknown
-): Partial<Attribute> {
-  const aliased: Partial<Attribute> = {
-    default: defaultValue,
-    parseHTML: (element: Element) => element.getAttribute(domAttribute),
-    renderHTML: (attributes: Record<string, string>) => {
-      const renderedAttributes: Record<string, string> = {};
-      if(attributes[attributeName]) {
-        renderedAttributes[domAttribute] = attributes[attributeName];
-      }
-      return renderedAttributes;
-    },
-  };
-  return aliased;
-}
-
-export interface JSDataType<T> {
-  name: string;
-  stringify: (value: T) => string;
-  destringify: (value: string) => T;
-}
-
-export const JSDataTypes: Record<string, Partial<JSDataType<unknown>>> = {
-  boolean: {
-    destringify: value => value === 'true',
-  },
-  number: {
-    destringify: value => Number(value),
-  },
-  object: {
-    stringify: value => {
-      if(value) {
-        return JSON.stringify(value);
-      }
-      return '';
-    },
-    destringify: value => {
-      try {
-        return JSON.parse(value);
-      } catch(error) {
-        return null;
-      }
-    }
-  },
-  string: {},
-  undefined: {
-    stringify: () => '',
-    destringify: () => undefined,
-  }
-}
-
-export function stringify(value: unknown): string {
-  const dataType = JSDataTypes[typeof value];
-  if(dataType?.stringify) {
-    return dataType.stringify(value);
-  }
-  return String(value);
-}
-
-export function destringify(value: string, type: string): unknown {
-  const dataType = JSDataTypes[type];
-  if(dataType?.destringify) {
-    return dataType.destringify(value);
-  }
-  return value;
-}
-
 export function getNestedValueNode(
   source: Node,
   path: string[],
@@ -288,6 +235,26 @@ export function createValueArray(
       const value = getNodeValue(source, options);
       results.push(value);
       return false;
+    }
+  });
+  return results;
+}
+
+export function getLocalValuesAt(
+  doc: Node,
+  pos: number,
+): Record<string, NodeWithPos> {
+  const results: Record<string, NodeWithPos> = {};
+  const resolved = doc.resolve(pos);
+  const namedAncestor = findParentNodeClosestToPos(
+    resolved,
+    node => node.attrs.globalName || node.attrs.localName
+  );
+  const owner = namedAncestor?.node || doc;
+  owner.descendants((node, pos) => {
+    const key = node.attrs.localName;
+    if(key) {
+      results[key] = { node, pos };
     }
   });
   return results;

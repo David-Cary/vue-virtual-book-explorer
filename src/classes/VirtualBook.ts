@@ -1,22 +1,48 @@
 import { JSONContent } from '@tiptap/core'
 
-export class VirtualBookSection {
+export interface VirtualBookSectionState {
+  id: string;
+  title: string;
+  content: JSONContent[];
+  sections: VirtualBookSection[];
+  sectionDisplay?: string;
+}
+
+export class VirtualBookSection implements VirtualBookSectionState {
   id = '';
   title = '';
   content: JSONContent[] = [];
   sections: VirtualBookSection[] = [];
   sectionDisplay?: string;
+
+  static fromState(
+    source: VirtualBookSectionState
+  ): VirtualBookSection {
+    const result = new VirtualBookSection();
+    Object.assign(result, source);
+    result.sections = VirtualBookSection.sectionsFromState(source.sections);
+    return result;
+  }
+
+  static sectionsFromState(
+    source: VirtualBookSectionState[]
+  ): VirtualBookSection[] {
+    const result = source.map(state => VirtualBookSection.fromState(state));
+    return result;
+  }
 }
 
 export type VirtualBookContent = VirtualBookSection | JSONContent;
 
+export type VirtualBookContentState = VirtualBookSectionState | JSONContent;
+
 export type PathStep = string | number;
 
-export type ValueMap = {[k: string]: unknown};
+export type ValueMap = Record<string, unknown>;
 
-export type StringMap = {[k: string]: string};
+export type StringMap = Record<string, string>;
 
-export type StyleRuleMap = {[k: string]: StringMap};
+export type StyleRuleMap = Record<string, StringMap>;
 
 export type VirtualBookContentSearchFilter= (
   item: VirtualBookContent,
@@ -51,9 +77,161 @@ export enum SectionDisplayTypes {
   SHOW_SUBSECTIONS_SEPARATELY = "separate"
 }
 
-export default class VirtualBook {
+export interface VirtualBookState {
+  style: StyleRuleMap;
+  sections: VirtualBookSectionState[];
+}
+
+export interface RecordWithKeys<T> {
+  values: Record<string, T>;
+  keys: string[];
+}
+
+export function getRecordWithKeys<T>(
+  source: Record<string, T>,
+  sorted = false,
+): RecordWithKeys<T> {
+  const results = {
+    values: source,
+    keys: Object.keys(source),
+  };
+  if(sorted) {
+    results.keys.sort();
+  }
+  return results;
+}
+
+export function filterRecord<T>(
+  source: Record<string, T>,
+  filter: (value: T, key?: string) => boolean,
+): Record<string, T> {
+  const results: Record<string, T> = {};
+  for(const key in source) {
+    const value = source[key];
+    if(filter(value, key)) {
+      results[key] = value;
+    }
+  }
+  return results;
+}
+
+export interface VirtualBookDerivedData {
+  contentById: RecordWithKeys<VirtualBookContent>;
+  globalContent: RecordWithKeys<VirtualBookContent>;
+  templates: RecordWithKeys<VirtualBookContent>;
+}
+
+export default class VirtualBook implements VirtualBookState {
   style: StyleRuleMap = {};
   sections: VirtualBookSection[] = [];
+
+  get contentById(): Record<string, VirtualBookContent> {
+    const contentMap: Record<string, VirtualBookContent> = {};
+    VirtualBook.forContentIn(
+      this,
+      item => {
+        const key = VirtualBook.getContentId(item);
+        if(key) {
+          contentMap[key] = item;
+        }
+      }
+    );
+    return contentMap;
+  }
+
+  get contentIds(): string[] {
+    const contentMap = this.contentById;
+    return Object.keys(contentMap);
+  }
+
+  get globalContent(): Record<string, VirtualBookContent> {
+    const contentMap: Record<string, VirtualBookContent> = {};
+    VirtualBook.forContentIn(
+      this,
+      item => {
+        const key = VirtualBook.getContentAttribute<string>(item, 'globalName');
+        if(key) {
+          contentMap[key] = item;
+        }
+      }
+    );
+    return contentMap;
+  }
+
+  get templates(): Record<string, VirtualBookContent> {
+    const contentMap: Record<string, VirtualBookContent> = {};
+    VirtualBook.forContentIn(
+      this,
+      item => {
+        const attrs = VirtualBook.getContentAttributes(item);
+        if(attrs && attrs.globalName && attrs.isTemplate) {
+          const key = String(attrs.globalName);
+          contentMap[key] = item;
+        }
+      }
+    );
+    return contentMap;
+  }
+
+  get derivedData(): VirtualBookDerivedData {
+    const globalContent = this.globalContent;
+    const templates = filterRecord<VirtualBookContent>(
+      globalContent,
+      item => Boolean(
+        VirtualBook.getContentAttribute<boolean>(item, 'isTemplate')
+      )
+    );
+    return {
+       contentById: getRecordWithKeys(this.contentById, true),
+       globalContent: getRecordWithKeys(globalContent, true),
+       templates: getRecordWithKeys(templates, true),
+    };
+  }
+
+  static fromState(source: VirtualBookState): VirtualBook {
+    const result = new VirtualBook();
+    result.style = source.style;
+    result.sections = VirtualBookSection.sectionsFromState(source.sections);
+    return result;
+  }
+
+  static getContentAttribute<T>(
+    source: VirtualBookContent,
+    attributeName: string
+  ): T | undefined {
+    if('attrs' in source && source.attrs) {
+      return source.attrs[attributeName];
+    }
+    return undefined
+  }
+
+  static getContentAttributes(
+    source: VirtualBookContent
+  ): ValueMap | undefined {
+    if('attrs' in source && source.attrs) {
+      return source.attrs;
+    }
+    return undefined
+  }
+
+  static getLocalContent(
+    source: VirtualBookContent | JSONContent[],
+    results: Record<string, VirtualBookContent> = {}
+  ): Record<string, VirtualBookContent> {
+    if(Array.isArray(source)) {
+      for(const item of source) {
+        VirtualBook.getLocalContent(item);
+      }
+    } else {
+      const key = VirtualBook.getContentAttribute<string>(source, 'localName');
+      if(key) {
+        results[key] = source;
+      } else if(source.content) {
+        VirtualBook.getLocalContent(source.content);
+      }
+    }
+    return results;
+  }
 
   static getPathToSection(
     source: VirtualBook | VirtualBookSection,
@@ -100,14 +278,7 @@ export default class VirtualBook {
               targetContent.content
             );
           }
-          if('marks' in targetContent && targetContent.marks) {
-            VirtualBook.forContentIn(
-              source,
-              callback,
-              path.concat('marks'),
-              targetContent.marks
-            );
-          } else if(targetContent.sections) {
+          if(targetContent.sections) {
             VirtualBook.forContentIn(
               source,
               callback,
@@ -117,7 +288,7 @@ export default class VirtualBook {
           }
         }
       }
-    } else if(source && source.sections) {
+    } else if(source.sections) {
       VirtualBook.forContentIn(source, callback, ['sections'], source.sections);
     }
   }
@@ -161,34 +332,9 @@ export default class VirtualBook {
     };
   }
 
-  static getContentId(target: VirtualBookContent): string | null {
+  static getContentId(target: VirtualBookContent): string | undefined {
     if('id' in target) return target.id;
-    if('attrs' in target && target.attrs) {
-      return target.attrs.id;
-    }
-    if('marks' in target && target.marks) {
-      for(const mark of target.marks) {
-        if(mark && mark.attrs && 'id' in mark.attrs) {
-          return mark.attrs.id;
-        }
-      }
-    }
-    return null;
-  }
-
-  static getIdsIn(source: VirtualBook): string[] {
-    const ids: string[] = [];
-    VirtualBook.forContentIn(
-      source,
-      item => {
-        if(item.id) {
-          ids.push(item.id);
-        } else if('attrs' in item && item.attrs && item.attrs.id) {
-          ids.push(item.attrs.id);
-        }
-      }
-    );
-    return ids;
+    return VirtualBook.getContentAttribute<string>(target, 'id');
   }
 
   static resolvePath(source: unknown, path: PathStep[]): unknown {

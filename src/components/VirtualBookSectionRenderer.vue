@@ -5,7 +5,7 @@
   >
     <IdField
       v-if="editable"
-      :source="source"
+      :usedIds="sourceData.contentById.keys"
       :value="value.id"
       placeholder="Section Id"
       @change="onIdChange($event)"
@@ -19,6 +19,7 @@
     />
     <HypertextContentEditor
       :context="source"
+      :cachedContextData="sourceData"
       :content="value.content"
       :editable="editable"
       placeholder="Section Content"
@@ -53,6 +54,7 @@
           <VirtualBookSectionRenderer
             v-if="sectionDisplay === 'full'"
             :source="source"
+            :cachedSourceData="sourceData"
             :path="path.concat('sections', index)"
             :value="section"
             :editable="editable"
@@ -103,7 +105,11 @@
 import { VNode } from 'vue'
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { clamp } from 'lodash'
-import VirtualBook, { VirtualBookSection, PathStep } from '@/classes/VirtualBook'
+import VirtualBook, {
+  VirtualBookSection,
+  PathStep,
+  VirtualBookDerivedData,
+} from '@/classes/VirtualBook'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import IdField from '@/components/IdField.vue'
@@ -126,8 +132,19 @@ import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
 export default class VirtualBookSectionRenderer extends Vue {
   @Prop() value?: VirtualBookSection;
   @Prop() source?: VirtualBook;
+  @Prop() cachedSourceData?: VirtualBookDerivedData;
   @Prop() path?: PathStep[];
   @Prop() editable?: boolean;
+
+  get sourceData(): VirtualBookDerivedData | null {
+    return this.cachedSourceData
+      || this.source?.derivedData
+      || null;
+  }
+
+  get contentIds(): string[] {
+    return this.sourceData?.contentById.keys || [];
+  }
 
   get sectionDepth(): number {
     let count = 0;

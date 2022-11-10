@@ -21,9 +21,9 @@
         placeholder="content id"
         @change="setLinkParam('content_id', $event.target.value)"
       />
-      <datalist id="link-editor-content-ids">
+      <datalist v-if="ids" id="link-editor-content-ids">
         <option
-          v-for="(id, index) in knownIds"
+          v-for="(id, index) in ids"
           :value="id"
           :key="index"
         />
@@ -42,14 +42,13 @@
 
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { Route } from 'vue-router';
+import { Route } from 'vue-router'
 import { Editor } from '@tiptap/vue-2'
-import VirtualBook from '@/classes/VirtualBook'
 
 @Component
 export default class LinkEditor extends Vue {
   @Prop() editor?: Editor;
-  @Prop() context?: VirtualBook;
+  @Prop() ids?: string[];
   @Prop() position?: number;
 
   emptyStringProxy = ' ';
@@ -126,13 +125,6 @@ export default class LinkEditor extends Vue {
       params[key] = rawValue !== this.emptyStringProxy ? rawValue : '';
     }
     return params;
-  }
-
-  get knownIds(): string[] {
-    if(this.context) {
-      return VirtualBook.getIdsIn(this.context);
-    }
-    return [];
   }
 
   setLinkParam(key: string, value: string): void {

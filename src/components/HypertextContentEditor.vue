@@ -9,7 +9,6 @@
           <LinkIcon size="1x"/>
         </button>
         <button
-          v-if="snippetPossible"
           :class="{ 'active-tag-button': snippetActive }"
           @click="toggleSnippet()"
         >
@@ -45,6 +44,12 @@
         >
           <CpuIcon size="1x"/>
         </button>
+        <span>|</span>
+        <TemplatedContentInjector
+          v-if="contextData.templates.keys.length"
+          :editor="editor"
+          :templates="contextData.templates.values"
+        />
       </div>
       <div v-if="selectionNodes.length">
         <select
@@ -63,7 +68,7 @@
         <div v-if="selectedNode.node.type.attrs.id">
           <label class="row-label">Id</label>
           <IdField
-            :source="context"
+            :usedIds="contextData.contentById.keys"
             :value="selectedNode.node.attrs.id"
             @change="setNodeAttribute(selectedNode.pos, 'id', $event.value)"
           />
@@ -76,10 +81,18 @@
             @change="setNodeAttribute(selectedNode.pos, 'class', $event.target.value)"
           />
         </div>
+        <div v-if="selectedNode.node.type.attrs.globalName">
+          <label class="row-label">Global Name</label>
+          <IdField
+            :usedIds="contextData.globalContent.keys"
+            :value="selectedNode.node.attrs.globalName"
+            @change="setNodeAttribute(selectedNode.pos, 'globalName', $event.value || undefined)"
+          />
+        </div>
         <div v-if="selectedNode.node.type.attrs.localName">
           <label class="row-label">Local Name</label>
           <IdField
-            :source="context"
+            :usedIds="selectedNodeLocalValues.keys"
             :value="selectedNode.node.attrs.localName"
             @change="setNodeAttribute(selectedNode.pos, 'localName', $event.value || undefined)"
           />
@@ -110,6 +123,14 @@
             :value="selectedNode.node.attrs.hiddenValue"
             @change="onHiddenValueChange(selectedNode, $event)"
           />
+        </div>
+        <div v-if="selectedNode.node.type.attrs.isTemplate">
+          <input
+            type="checkbox"
+            :checked="selectedNode.node.attrs.isTemplate"
+            @change="toggleIsTemplate(selectedNode)"
+          >
+          <label>Is Template</label>
         </div>
         <TableEditor
           v-if="tableElementSelected"
@@ -160,8 +181,8 @@
           </div>
           <LinkEditor
             v-if="selectedMarks['link']"
+            :ids="contextData.contentById.keys"
             :editor="editor"
-            :context="context"
             :position="selectedNode.pos"
           />
         </div>
@@ -211,8 +232,13 @@ import {
   isEqual,
   clone,
   set,
+  omit,
 } from 'lodash'
-import VirtualBook from '@/classes/VirtualBook'
+import VirtualBook, {
+  VirtualBookDerivedData,
+  RecordWithKeys,
+  getRecordWithKeys,
+} from '@/classes/VirtualBook'
 import { Snippet } from '@/tiptap/Snippet'
 import { TextBlock } from '@/tiptap/TextBlock'
 import { TextClass } from '@/tiptap/TextClass'
@@ -220,11 +246,13 @@ import { OuterBlock } from '@/tiptap/OuterBlock'
 import { EnableAttributes } from '@/tiptap/EnableAttributes'
 import { CompiledText, CompileTextProps } from '@/tiptap/CompiledText'
 import { IdentifiedNodes } from '@/tiptap/extensions/IdentifiedNodes'
+import { TemplateNodes } from '@/tiptap/extensions/TemplateNodes'
 import {
   ValueNodes,
   defaultEvaluators,
   getNestedValueNode,
   getNodeValue,
+  getLocalValuesAt,
 } from '@/tiptap/extensions/ValueNodes'
 import { template, groupBy } from 'lodash'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
@@ -232,6 +260,7 @@ import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
 import TableEditor from '@/components/TableEditor.vue'
 import JSValueEditor from '@/components/JSValueEditor.vue'
+import TemplatedContentInjector from '@/components/TemplatedContentInjector.vue'
 
 @Component ({
   components: {
@@ -242,6 +271,7 @@ import JSValueEditor from '@/components/JSValueEditor.vue'
     LinkEditor,
     TableEditor,
     JSValueEditor,
+    TemplatedContentInjector,
     TagIcon,
     ListIcon,
     GridIcon,
@@ -256,6 +286,7 @@ import JSValueEditor from '@/components/JSValueEditor.vue'
 })
 export default class HypertextContentEditor extends Vue {
   @Prop() context?: VirtualBook;
+  @Prop() cachedContextData?: VirtualBookDerivedData;
   @Prop() editable?: boolean;
   @Watch('editable', { immediate: true })
   onEditableChange(newValue: boolean): void {
@@ -274,6 +305,12 @@ export default class HypertextContentEditor extends Vue {
   }
 
   @Prop() placeholder?: string;
+
+  get contextData(): VirtualBookDerivedData | null {
+    return this.cachedContextData
+      || this.context?.derivedData
+      || null;
+  }
 
   selectionNodes: NodeWithPos[] = [];
 
@@ -337,6 +374,28 @@ export default class HypertextContentEditor extends Vue {
           'textBlock',
           'compiledText',
         ],
+      }),
+      TemplateNodes.configure({
+        types: [
+          'snippet',
+        ],
+        markerAttribute: {
+          name: 'isTemplate',
+          DOMName: 'data-is-template',
+          dataType: 'boolean'
+        },
+        cloningMap: {
+          attrs: (source, options?, depth = 0) => {
+            if(typeof source === 'object') {
+              const excluded = ['isTemplate', 'globalName'];
+              if(depth <= 1) {
+                excluded.push('localName');
+              }
+              return omit(source, excluded);
+            }
+            return {};
+          }
+        }
       }),
       ValueNodes.configure({
         types: [
@@ -503,12 +562,6 @@ export default class HypertextContentEditor extends Vue {
     }
   }
 
-  get snippetPossible(): boolean {
-    //if(this.snippetActive) return true;
-    //return this.editor.can().setSnippet();
-    return true
-  }
-
   get snippetActive(): boolean {
     return this.editor.isActive('snippet');
   }
@@ -610,40 +663,22 @@ export default class HypertextContentEditor extends Vue {
     }
   }
 
-  stringify(value: unknown): string {
-    switch(typeof value) {
-      case 'object':
-        if(value) {
-          return JSON.stringify(value);
-        }
-        return '';
-      case 'undefined':
-        return '';
-    }
-    return String(value);
+  toggleIsTemplate(ref: NodeWithPos): void {
+    const isTemplate = !ref.node.attrs.isTemplate;
+    this.editor
+      .chain()
+      .setNodeAsTemplate(ref.pos, isTemplate)
+      .run();
   }
 
-  convertValue(
-    source: unknown,
-    type: string,
-    defaultValue?: unknown
-  ): unknown {
-    switch(type) {
-      case 'number':
-        return Number(source);
-      case 'string':
-        return String(source);
-      default:
-        try {
-          const text = String(source);
-          return JSON.parse(text);
-        } catch(error) {
-          if(type === 'object') {
-            return defaultValue;
-          }
-          return null;
-        }
-    }
+  get selectedNodeLocalValues(): RecordWithKeys<NodeWithPos> {
+    const values = this.selectedNode
+      ? getLocalValuesAt(
+        this.editor.state.doc,
+        this.selectedNode.pos,
+      )
+      : {};
+    return getRecordWithKeys<NodeWithPos>(values, true);
   }
 
   beforeDestroy(): void {

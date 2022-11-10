@@ -11,17 +11,16 @@
 
 <script lang="ts">
 import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
-import VirtualBook, { VirtualBookContent } from '@/classes/VirtualBook'
 
 @Component
 export default class IdField extends Vue {
-  @Prop() source?: VirtualBook;
   @Prop() value?: string;
   @Watch('value', { immediate: true })
   onValueChange(): void {
     this.localValue = this.value;
     this.errorClass = '';
   }
+  @Prop() usedIds?: string[];
   @Prop() placeholder?: string;
 
   localValue? = '';
@@ -33,16 +32,8 @@ export default class IdField extends Vue {
     if(field.value) {
       if(!field.value.match(/^([a-z]|[A-Z])/)) {
         this.errorClass = 'invalid-id';
-      } else if(this.source && field.value !== this.value) {
-        const matches = VirtualBook.searchBookContents(
-          this.source,
-          {
-            matchVia: (item: VirtualBookContent) => {
-              return VirtualBook.getContentId(item) === field.value;
-            },
-          }
-        );
-        if(matches.length) {
+      } else if(this.usedIds && field.value !== this.value) {
+        if(this.usedIds.indexOf(field.value) >= 0) {
           this.errorClass = 'duplicate-id';
         }
       }
