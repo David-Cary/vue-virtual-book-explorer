@@ -232,7 +232,6 @@ import {
   isEqual,
   clone,
   set,
-  omit,
 } from 'lodash'
 import VirtualBook, {
   VirtualBookDerivedData,
@@ -243,6 +242,7 @@ import { Snippet } from '@/tiptap/Snippet'
 import { TextBlock } from '@/tiptap/TextBlock'
 import { TextClass } from '@/tiptap/TextClass'
 import { OuterBlock } from '@/tiptap/OuterBlock'
+import { InlineInstance } from '@/tiptap/InlineInstance'
 import { EnableAttributes } from '@/tiptap/EnableAttributes'
 import { CompiledText, CompileTextProps } from '@/tiptap/CompiledText'
 import { IdentifiedNodes } from '@/tiptap/extensions/IdentifiedNodes'
@@ -384,18 +384,9 @@ export default class HypertextContentEditor extends Vue {
           DOMName: 'data-is-template',
           dataType: 'boolean'
         },
-        cloningMap: {
-          attrs: (source, options?, depth = 0) => {
-            if(typeof source === 'object') {
-              const excluded = ['isTemplate', 'globalName'];
-              if(depth <= 1) {
-                excluded.push('localName');
-              }
-              return omit(source, excluded);
-            }
-            return {};
-          }
-        }
+      }),
+      InlineInstance.configure({
+        getTemplate: id => this.contextData?.templates?.values[id] || null
       }),
       ValueNodes.configure({
         types: [

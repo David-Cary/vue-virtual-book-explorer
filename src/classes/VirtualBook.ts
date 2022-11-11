@@ -115,10 +115,28 @@ export function filterRecord<T>(
   return results;
 }
 
+export function mapRecord<S, T>(
+  source: Record<string, S>,
+  callback: (value: S, key?: string) => T,
+): Record<string, T> {
+  const results: Record<string, T> = {};
+  for(const key in source) {
+    results[key] = callback(source[key], key);
+  }
+  return results;
+}
+
 export interface VirtualBookDerivedData {
   contentById: RecordWithKeys<VirtualBookContent>;
   globalContent: RecordWithKeys<VirtualBookContent>;
   templates: RecordWithKeys<VirtualBookContent>;
+}
+
+export enum VirtualBookContentAttributes {
+  DOM_ID = 'id',
+  GLOBAL_NAME = 'globalName',
+  LOCAL_NAME = 'localName',
+  TEMPLATE_SOURCE = 'isTemplate',
 }
 
 export default class VirtualBook implements VirtualBookState {
@@ -149,7 +167,10 @@ export default class VirtualBook implements VirtualBookState {
     VirtualBook.forContentIn(
       this,
       item => {
-        const key = VirtualBook.getContentAttribute<string>(item, 'globalName');
+        const key = VirtualBook.getContentAttribute<string>(
+          item,
+          VirtualBookContentAttributes.GLOBAL_NAME
+        );
         if(key) {
           contentMap[key] = item;
         }
@@ -164,9 +185,11 @@ export default class VirtualBook implements VirtualBookState {
       this,
       item => {
         const attrs = VirtualBook.getContentAttributes(item);
-        if(attrs && attrs.globalName && attrs.isTemplate) {
-          const key = String(attrs.globalName);
-          contentMap[key] = item;
+        if(attrs && attrs[VirtualBookContentAttributes.TEMPLATE_SOURCE]) {
+          const key = String(attrs[VirtualBookContentAttributes.GLOBAL_NAME]);
+          if(key) {
+            contentMap[key] = VirtualBook.templatize(item);
+          }
         }
       }
     );
@@ -175,11 +198,18 @@ export default class VirtualBook implements VirtualBookState {
 
   get derivedData(): VirtualBookDerivedData {
     const globalContent = this.globalContent;
-    const templates = filterRecord<VirtualBookContent>(
+    const templateSources = filterRecord<VirtualBookContent>(
       globalContent,
       item => Boolean(
-        VirtualBook.getContentAttribute<boolean>(item, 'isTemplate')
+        VirtualBook.getContentAttribute<boolean>(
+          item,
+          VirtualBookContentAttributes.TEMPLATE_SOURCE
+        )
       )
+    );
+    const templates = mapRecord<VirtualBookContent, JSONContent>(
+      templateSources,
+      item => VirtualBook.templatize(item)
     );
     return {
        contentById: getRecordWithKeys(this.contentById, true),
@@ -223,7 +253,10 @@ export default class VirtualBook implements VirtualBookState {
         VirtualBook.getLocalContent(item);
       }
     } else {
-      const key = VirtualBook.getContentAttribute<string>(source, 'localName');
+      const key = VirtualBook.getContentAttribute<string>(
+        source,
+        VirtualBookContentAttributes.LOCAL_NAME
+      );
       if(key) {
         results[key] = source;
       } else if(source.content) {
@@ -334,7 +367,10 @@ export default class VirtualBook implements VirtualBookState {
 
   static getContentId(target: VirtualBookContent): string | undefined {
     if('id' in target) return target.id;
-    return VirtualBook.getContentAttribute<string>(target, 'id');
+    return VirtualBook.getContentAttribute<string>(
+      target,
+      VirtualBookContentAttributes.DOM_ID
+    );
   }
 
   static resolvePath(source: unknown, path: PathStep[]): unknown {
@@ -490,5 +526,23 @@ export default class VirtualBook implements VirtualBookState {
       }
     }
     return null;
+  }
+
+  static templatize(source:JSONContent): JSONContent {
+    const template = { ...source };
+    if(template.attrs) {
+      template.attrs = { ...template.attrs };
+      const excludedAttributes = [
+        VirtualBookContentAttributes.TEMPLATE_SOURCE,
+        VirtualBookContentAttributes.GLOBAL_NAME,
+        VirtualBookContentAttributes.LOCAL_NAME,
+      ];
+      for(const attribute of excludedAttributes) {
+        if(template.attrs[attribute]) {
+          delete template.attrs[attribute];
+        }
+      }
+    }
+    return template;
   }
 }
