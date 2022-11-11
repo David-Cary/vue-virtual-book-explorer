@@ -22,7 +22,7 @@ import { OperationRequest } from '@/classes/OperationEngine'
 export default class BookExplorerView extends Vue {
   @Prop() searchOptions?: VirtualBookContentSearchOptions;
 
-  book?: VirtualBook;
+  book: VirtualBook | null = null;
 
   refreshBook(): void {
     this.book = VirtualBook.fromState(this.$store.state.book);

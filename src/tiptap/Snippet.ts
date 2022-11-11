@@ -180,6 +180,76 @@ export const Snippet = Node.create<SnippetOptions>({
       },
     }
   },
+
+  addKeyboardShortcuts() {
+    return {
+      Enter: () => {
+        // This fixes the issue with starting a new line failing if triggered
+        // inside a snippet.
+        const { selection } = this.editor.state;
+        const { $from } = selection;
+        if(selection.empty
+          && $from.parent.type.name === this.name
+        ) {
+          for(let i = $from.depth - 1; i >= 0; i--) {
+            if($from.node(i).type.name !== this.name) {
+              const snippetIndex = i + 1;
+              const posInSnippet = $from.pos - $from.start(snippetIndex);
+              const snippetSize = $from.node(snippetIndex).nodeSize;
+              const breakPos = posInSnippet < 0.5 * snippetSize
+                ? $from.before(snippetIndex)
+                : $from.after(snippetIndex);
+              this.editor.commands.setTextSelection(breakPos)
+              break;
+            }
+          }
+        }
+        return false;
+      },
+      Space: () => {
+        // If the snippet is at the start of a block, adding spaces added
+        // to the front of it should come before the snippet.
+        const { selection } = this.editor.state;
+        const { $from } = selection;
+        if(selection.empty
+          && $from.parent.type.name === this.name
+          && $from.parentOffset === 0
+        ) {
+          for(let i = $from.depth - 1; i >= 0; i--) {
+            if($from.index(i) > 0
+              || $from.node(i).type.name !== this.name
+            ) {
+              this.editor.commands.insertContentAt($from.start(i), ' ');
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+      'Shift-Space': () => {
+        // Use this key combo to add a space outside the enclosing snippet.
+        // This is especially useful when the snippet is at the end of the
+        // current block.
+        const { selection } = this.editor.state;
+        const { $from } = selection;
+        if(selection.empty
+          && $from.parent.type.name === this.name
+          && !$from.nodeAfter
+        ) {
+          for(let i = $from.depth - 1; i >= 0; i--) {
+            const wrapper = $from.node(i);
+            if($from.index(i) < wrapper.nodeSize
+              || wrapper.type.name !== this.name
+            ) {
+              this.editor.commands.insertContentAt($from.end(i), ' ');
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+    }
+  },
 })
 
 function wrapBlockRange(
@@ -251,11 +321,11 @@ export function findEnclosingParent(
 ): NodeRange | null {
   // Verify positions enclose all contents of their respective parents.
   const $from = source.resolve(from);
-  if($from.nodeBefore && !predicate($from.parent)) {
+  if($from.start($from.depth) !== from) {
     return null;
   }
   const $to = source.resolve(to);
-  if($to.nodeAfter && !predicate($to.parent)) {
+  if($to.end($to.depth) !== to) {
     return null;
   }
   // Cycle up both branches.
@@ -263,13 +333,13 @@ export function findEnclosingParent(
   let fromAncestor = $from.parent;
   let toAncestor = $to.parent;
   let sharedAncestor = fromAncestor === toAncestor ? fromAncestor : null;
+  let ancestorDepth = maxDepth;
   for(let i = maxDepth; i > 0; i--) {
     if(sharedAncestor) {
       if(predicate(sharedAncestor)) {
-        //const selectionDepth = $from.nodeBefore || $to.nodeAfter ? i + 1 : i;
         return {
-          from: $from.start(i),
-          to: $from.end(i),
+          from: $from.start(ancestorDepth),
+          to: $from.end(ancestorDepth),
           node: sharedAncestor
         };
       } else {
@@ -299,6 +369,8 @@ export function findEnclosingParent(
       }
       if(fromAncestor === toAncestor) {
         sharedAncestor = fromAncestor;
+      } else {
+        ancestorDepth--;
       }
     }
   }

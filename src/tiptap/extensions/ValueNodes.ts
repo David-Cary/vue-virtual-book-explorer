@@ -248,7 +248,9 @@ export function getLocalValuesAt(
   const resolved = doc.resolve(pos);
   const namedAncestor = findParentNodeClosestToPos(
     resolved,
-    node => node.attrs.globalName || node.attrs.localName
+    node => node.attrs.globalName
+      || node.attrs.localName
+      || node.attrs.evaluateAs
   );
   const owner = namedAncestor?.node || doc;
   owner.descendants((node, pos) => {
