@@ -16,7 +16,11 @@
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { cloneDeep } from 'lodash'
 import { FolderMinusIcon, CopyIcon, ScissorsIcon } from 'vue-feather-icons'
-import { VirtualBookSection, PathStep } from '@/classes/VirtualBook'
+import {
+  VirtualBookSection,
+  VirtualBookContentReference,
+} from '@/classes/VirtualBook'
+import { CommonKey } from '@/ts/utilities/TraversalState'
 import { DeleteValueRequest } from '@/classes/ObjectEditorEngine'
 
 @Component ({
@@ -27,11 +31,18 @@ import { DeleteValueRequest } from '@/classes/ObjectEditorEngine'
   }
 })
 export default class VirtualBookSectionControls extends Vue {
-  @Prop() value?: VirtualBookSection;
-  @Prop() path?: PathStep[];
+  @Prop() value?: VirtualBookContentReference;
+
+  get section(): VirtualBookSection | null {
+    return this.value?.section.value || null;
+  }
+
+  get path(): CommonKey[] {
+    return this.value?.propertyPath || [];
+  }
 
   get isCopied(): boolean {
-    return this.copiedSection === this.value;
+    return this.copiedSection === this.section;
   }
 
   get copyIconClass(): string {
@@ -62,7 +73,7 @@ export default class VirtualBookSectionControls extends Vue {
       this.isCopied
         ? null
         : {
-            source: this.value,
+            source: this.section,
           }
     );
   }
@@ -73,20 +84,20 @@ export default class VirtualBookSectionControls extends Vue {
       this.isCopied
         ? null
         : {
-            source: this.value,
+            source: this.section,
             remove: true,
           }
     );
   }
 
   onRemoveSection(): void {
-    if(this.value?.content.length || this.value?.sections.length) {
+    if(this.section?.content.length || this.section?.sections.length) {
       const confirmed = confirm("Are you sure you want to delete this section and all it's content?");
       if(!confirmed) return;
     }
     const request = new DeleteValueRequest(
       this.path,
-      cloneDeep(this.value)
+      cloneDeep(this.section)
     );
     this.$emit('change', request);
   }

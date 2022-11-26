@@ -5,11 +5,12 @@ import {
   findParentNodeClosestToPos,
 } from '@tiptap/core'
 import { Node } from 'prosemirror-model'
+import { createAttribute } from '@/tiptap/helpers/createAttribute'
 import {
-  createAttribute,
   stringify,
-  destringify
-} from '@/tiptap/helpers/createAttribute'
+  destringify,
+} from '@/ts/utilities/destringify'
+
 
 export interface ValueNodesOptions {
   types: string[];

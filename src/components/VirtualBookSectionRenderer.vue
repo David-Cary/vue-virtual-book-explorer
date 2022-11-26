@@ -1,32 +1,32 @@
 <template>
   <div
-    v-if="value"
+    v-if="section"
     class="vbook-section"
   >
     <IdField
       v-if="editable"
-      :usedIds="sourceData.contentById.keys"
-      :value="value.id"
+      :usedIds="contentIds"
+      :value="section.id"
       placeholder="Section Id"
       @change="onIdChange($event)"
     />
     <TextRenderer
       :tag="headerTag"
-      :value="value.title"
+      :value="section.title"
       :editable="editable"
       placeholder="Section Title"
       @change="onTitleChange($event)"
     />
     <HypertextContentEditor
-      :context="source"
+      :context="book"
       :cachedContextData="sourceData"
-      :content="value.content"
+      :content="section.content"
       :editable="editable"
       placeholder="Section Content"
       @change="onContentChange($event)"
     />
     <div
-      v-if="value.sections"
+      v-if="subsections"
       :class="subsectionsPaneClass"
     >
       <div v-if="editable">
@@ -41,21 +41,18 @@
       </div>
       <div :class="sectionDisplayClass">
         <template
-          v-for="(section, index) in value.sections"
+          v-for="(section, index) in subsections"
         >
           <VirtualBookSectionInjector
             v-if="editable"
             :key="'add-at-'+index"
-            :source="source"
-            :basePath="path"
+            :parentRef="value"
             :index="index"
             @change="$emit('change', $event)"
           />
           <VirtualBookSectionRenderer
             v-if="sectionDisplay === 'full'"
-            :source="source"
             :cachedSourceData="sourceData"
-            :path="path.concat('sections', index)"
             :value="section"
             :editable="editable"
             :key="index"
@@ -66,24 +63,19 @@
             v-else-if="editable || sectionDisplay !== 'separate'"
             :key="index"
           >
-            <VirtualBookContentLink
-              :target="section"
-              :path="path.concat('sections', index)"
-            />
+            <VirtualBookContentLink :contentRef="section"/>
             &nbsp;
             <VirtualBookSectionControls
               v-if="editable"
               :value="section"
-              :path="path.concat('sections', index)"
               @change="$emit('change', $event)"
             />
           </div>
         </template>
         <VirtualBookSectionInjector
           v-if="editable"
-          :source="source"
-          :basePath="path"
-          :index="value.sections.length"
+          :parentRef="value"
+          :index="value.section.value.sections.length"
           @change="$emit('change', $event)"
         />
       </div>
@@ -92,7 +84,6 @@
       v-if="editable"
       class="vbook-section-menu"
       :value="value"
-      :path="path"
       @change="$emit('change', $event)"
     />
   </div>
@@ -106,10 +97,11 @@ import { VNode } from 'vue'
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { clamp } from 'lodash'
 import VirtualBook, {
+  VirtualBookContentReference,
   VirtualBookSection,
-  PathStep,
   VirtualBookDerivedData,
 } from '@/classes/VirtualBook'
+import { CommonKey } from '@/ts/utilities/TraversalState'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import IdField from '@/components/IdField.vue'
@@ -130,15 +122,17 @@ import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
   }
 })
 export default class VirtualBookSectionRenderer extends Vue {
-  @Prop() value?: VirtualBookSection;
-  @Prop() source?: VirtualBook;
+  @Prop() value?: VirtualBookContentReference;
   @Prop() cachedSourceData?: VirtualBookDerivedData;
-  @Prop() path?: PathStep[];
   @Prop() editable?: boolean;
+
+  get book(): VirtualBook | null {
+    return this.value?.book || null;
+  }
 
   get sourceData(): VirtualBookDerivedData | null {
     return this.cachedSourceData
-      || this.source?.derivedData
+      || this.book?.derivedData
       || null;
   }
 
@@ -146,30 +140,32 @@ export default class VirtualBookSectionRenderer extends Vue {
     return this.sourceData?.contentById.keys || [];
   }
 
+  get section(): VirtualBookSection | null {
+    return this.value?.section.value || null;
+  }
+
+  get subsections(): VirtualBookContentReference[] | null {
+    return this.value?.subsections || null;
+  }
+
   get sectionDepth(): number {
-    let count = 0;
-    if(this.path) {
-      for(const step of this.path) {
-        if(step === 'sections') {
-          count++
-        }
-      }
-    }
-    return count;
+    return this.value?.section.state.descent.length || 0;
+  }
+
+  get path(): CommonKey[] {
+    return this.value?.propertyPath || [];
   }
 
   defaultSectionDisplay = 'full';
 
   get sectionDisplay(): string {
-    return this.value && this.value.sectionDisplay
-      ? this.value.sectionDisplay
-      : this.defaultSectionDisplay;
+    return this.section?.sectionDisplay || this.defaultSectionDisplay;
   }
 
   setSectionDisplay(value: string): void {
     const request = new SetValueRequest({
       value: value !== this.defaultSectionDisplay ? value : undefined,
-      previousValue: this.value ? this.value.sectionDisplay : undefined,
+      previousValue: this.section?.sectionDisplay,
       path: this.path ? this.path.concat('sectionDisplay') : undefined,
     });
     this.$emit('change', request);
@@ -184,7 +180,7 @@ export default class VirtualBookSectionRenderer extends Vue {
   }
 
   get isCopied(): boolean {
-    return this.copiedSection === this.value;
+    return this.copiedSection === this.section;
   }
 
   get copyIconClass(): string {

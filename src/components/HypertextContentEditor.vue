@@ -372,6 +372,7 @@ export default class HypertextContentEditor extends Vue {
           'table',
           'outerBlock',
           'textBlock',
+          'snippet',
           'compiledText',
         ],
       }),
@@ -685,6 +686,7 @@ export default class HypertextContentEditor extends Vue {
   position absolute
   pointer-events none
   margin-left 2px
+  margin-top 1em
 .content-editor-pane
   overflow-y scroll
   max-height 500px

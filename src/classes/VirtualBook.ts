@@ -1,9 +1,77 @@
-import { JSONContent } from '@tiptap/core'
+import {
+  DescentResult,
+  CommonKey,
+  ValidKey,
+  WrappedArrayStrategy,
+  getNestedValue,
+  traverseContents,
+  getSibling,
+  getLeaf,
+} from '@/ts/utilities/TraversalState';
+
+// Content Nodes are roughly equivalent to prosemirror nodes.
+
+export interface TypedData {
+  type: string;
+}
+
+export interface VirtualBookTextNodeState extends TypedData {
+  text: string;
+}
+
+export interface VirtualBookIdentifiedNode {
+  id: string;
+}
+
+export interface VirtualBookValueNode {
+  localName: string;
+  evaluateAs: string;
+  hiddenValue: unknown;
+}
+
+export interface VirtualBookGlobalNode {
+  globalName: string;
+}
+
+export interface VirtualBookTemplateSource {
+  isTemplate: boolean;
+}
+
+export interface VirtualBookContentAttributeMap extends
+  Partial<VirtualBookIdentifiedNode>,
+  Partial<VirtualBookGlobalNode>,
+  Partial<VirtualBookTemplateSource>,
+  Partial<VirtualBookValueNode>
+{
+  [key: string]: unknown;
+}
+
+export interface VirtualBookTextBranchState {
+  type: string;
+  attrs: VirtualBookContentAttributeMap;
+  content: VirtualBookContentNode[];
+}
+
+export interface VirtualBookContentNode extends
+  Partial<VirtualBookTextBranchState>,
+  Partial<VirtualBookTextNodeState>
+{}
+
+// Book sections are ways of grouping content that associate a header with
+// a set of content blocks and subsections.
+
+export enum SectionDisplayTypes {
+  SHOW_SUBSECTIONS_SEPARATELY = "separate"
+}
+
+export interface VirtualBookSectionSearchOptions {
+  path: ValidKey[];
+}
 
 export interface VirtualBookSectionState {
   id: string;
   title: string;
-  content: JSONContent[];
+  content: VirtualBookContentNode[];
   sections: VirtualBookSection[];
   sectionDisplay?: string;
 }
@@ -11,71 +79,47 @@ export interface VirtualBookSectionState {
 export class VirtualBookSection implements VirtualBookSectionState {
   id = '';
   title = '';
-  content: JSONContent[] = [];
+  content: VirtualBookContentNode[] = [];
   sections: VirtualBookSection[] = [];
   sectionDisplay?: string;
 
-  static fromState(
-    source: VirtualBookSectionState
-  ): VirtualBookSection {
-    const result = new VirtualBookSection();
-    Object.assign(result, source);
-    result.sections = VirtualBookSection.sectionsFromState(source.sections);
-    return result;
+  constructor(source?: VirtualBookSectionState) {
+    if(source) {
+      Object.assign(this, source);
+      if(source.sections) {
+        this.sections = source.sections.map(
+          item => new VirtualBookSection(item)
+        );
+      }
+      this.content = source.content;
+    }
   }
 
-  static sectionsFromState(
-    source: VirtualBookSectionState[]
-  ): VirtualBookSection[] {
-    const result = source.map(state => VirtualBookSection.fromState(state));
-    return result;
+  static contentStrategy = new WrappedArrayStrategy<VirtualBookSection, VirtualBookContentNode> (
+    (source) => source.content || [],
+  );
+
+  static cloneSection(source: VirtualBookSectionState): VirtualBookSection {
+    const cloned = new VirtualBookSection();
+    cloned.title = source.title;
+    cloned.content = source.content.map(
+      node => VirtualBook.cloneNode(node)
+    );
+    cloned.sections = source.sections.map(
+      subsection => VirtualBookSection.cloneSection(subsection)
+    );
+    if(source.sectionDisplay !== undefined) {
+      cloned.sectionDisplay = source.sectionDisplay;
+    }
+    return cloned;
   }
 }
 
-export type VirtualBookContent = VirtualBookSection | JSONContent;
-
-export type VirtualBookContentState = VirtualBookSectionState | JSONContent;
-
-export type PathStep = string | number;
-
-export type ValueMap = Record<string, unknown>;
+export type VirtualBookContent = VirtualBookSection | VirtualBookContentNode;
 
 export type StringMap = Record<string, string>;
 
 export type StyleRuleMap = Record<string, StringMap>;
-
-export type VirtualBookContentSearchFilter= (
-  item: VirtualBookContent,
-  path?: PathStep[],
-  source?: VirtualBook
-) => boolean | number;
-
-export interface VirtualBookContentSearchOptions {
-  path: PathStep[];
-  matchVia: VirtualBookContentSearchFilter;
-}
-
-export interface VirtualBookContentSearchResult {
-  path: PathStep[];
-}
-
-export interface VirtualBookContentReference {
-  source: VirtualBook;
-  path: PathStep[];
-  value?: VirtualBookContent;
-  collectionKey?: string;
-  index?: number;
-}
-
-export type VirtualBookContentCallback = (
-  item: VirtualBookContent,
-  path?: PathStep[],
-  source?: VirtualBook
-) => boolean | void;
-
-export enum SectionDisplayTypes {
-  SHOW_SUBSECTIONS_SEPARATELY = "separate"
-}
 
 export interface VirtualBookState {
   style: StyleRuleMap;
@@ -101,21 +145,7 @@ export function getRecordWithKeys<T>(
   return results;
 }
 
-export function filterRecord<T>(
-  source: Record<string, T>,
-  filter: (value: T, key?: string) => boolean,
-): Record<string, T> {
-  const results: Record<string, T> = {};
-  for(const key in source) {
-    const value = source[key];
-    if(filter(value, key)) {
-      results[key] = value;
-    }
-  }
-  return results;
-}
-
-export function mapRecord<S, T>(
+export function mapRecord<S, T = S>(
   source: Record<string, S>,
   callback: (value: S, key?: string) => T,
 ): Record<string, T> {
@@ -127,89 +157,68 @@ export function mapRecord<S, T>(
 }
 
 export interface VirtualBookDerivedData {
-  contentById: RecordWithKeys<VirtualBookContent>;
-  globalContent: RecordWithKeys<VirtualBookContent>;
-  templates: RecordWithKeys<VirtualBookContent>;
+  contentById: RecordWithKeys<VirtualBookContentReference[]>;
+  globalContent: RecordWithKeys<VirtualBookContentReference[]>;
+  templates: RecordWithKeys<VirtualBookContentReference[]>;
 }
 
-export enum VirtualBookContentAttributes {
-  DOM_ID = 'id',
+export interface VirtualBookContentSearchOptions {
+  id: string;
+  section: Partial<VirtualBookSectionSearchOptions>;
+  node: Partial<VirtualBookSectionSearchOptions>;
+}
+
+export type VirtualBookContentContainer = VirtualBook | VirtualBookContent;
+
+export enum VirtualBookNodeAttributes {
+  CONTENT_ID = 'id',
   GLOBAL_NAME = 'globalName',
   LOCAL_NAME = 'localName',
-  TEMPLATE_SOURCE = 'isTemplate',
+  TEMPLATE_FLAG = 'isTemplate',
 }
 
 export default class VirtualBook implements VirtualBookState {
   style: StyleRuleMap = {};
   sections: VirtualBookSection[] = [];
 
-  get contentById(): Record<string, VirtualBookContent> {
-    const contentMap: Record<string, VirtualBookContent> = {};
-    VirtualBook.forContentIn(
-      this,
-      item => {
-        const key = VirtualBook.getContentId(item);
-        if(key) {
-          contentMap[key] = item;
-        }
+  constructor(source?: VirtualBookState) {
+    if(source) {
+      Object.assign(this, source);
+      if(source.sections) {
+        this.sections = source.sections.map(item => new VirtualBookSection(item));
       }
-    );
-    return contentMap;
+    }
   }
 
-  get contentIds(): string[] {
-    const contentMap = this.contentById;
-    return Object.keys(contentMap);
+  get contentById(): Record<string, VirtualBookContentReference[]> {
+    return this.getContentMap(item => VirtualBook.getContentId(item));
   }
 
-  get globalContent(): Record<string, VirtualBookContent> {
-    const contentMap: Record<string, VirtualBookContent> = {};
-    VirtualBook.forContentIn(
-      this,
+  get globalContent(): Record<string, VirtualBookContentReference[]> {
+    return this.getContentMap(
       item => {
-        const key = VirtualBook.getContentAttribute<string>(
+        const key = VirtualBook.getContentAttribute(
           item,
-          VirtualBookContentAttributes.GLOBAL_NAME
+          VirtualBookNodeAttributes.GLOBAL_NAME,
         );
-        if(key) {
-          contentMap[key] = item;
-        }
+        return key ? String(key) : '';
       }
     );
-    return contentMap;
-  }
-
-  get templates(): Record<string, VirtualBookContent> {
-    const contentMap: Record<string, VirtualBookContent> = {};
-    VirtualBook.forContentIn(
-      this,
-      item => {
-        const attrs = VirtualBook.getContentAttributes(item);
-        if(attrs && attrs[VirtualBookContentAttributes.TEMPLATE_SOURCE]) {
-          const key = String(attrs[VirtualBookContentAttributes.GLOBAL_NAME]);
-          if(key) {
-            contentMap[key] = VirtualBook.templatize(item);
-          }
-        }
-      }
-    );
-    return contentMap;
   }
 
   get derivedData(): VirtualBookDerivedData {
     const globalContent = this.globalContent;
-    const templateSources = filterRecord<VirtualBookContent>(
-      globalContent,
-      item => Boolean(
-        VirtualBook.getContentAttribute<boolean>(
-          item,
-          VirtualBookContentAttributes.TEMPLATE_SOURCE
-        )
-      )
-    );
-    const templates = mapRecord<VirtualBookContent, JSONContent>(
-      templateSources,
-      item => VirtualBook.templatize(item)
+    const templates = VirtualBook.filterContentMap(
+      this.globalContent,
+      item => {
+        if(item.section.value) {
+          return Boolean(VirtualBook.getContentAttribute(
+            item.section.value,
+            VirtualBookNodeAttributes.TEMPLATE_FLAG,
+          ));
+        }
+        return false;
+      },
     );
     return {
        contentById: getRecordWithKeys(this.contentById, true),
@@ -218,52 +227,109 @@ export default class VirtualBook implements VirtualBookState {
     };
   }
 
-  static fromState(source: VirtualBookState): VirtualBook {
-    const result = new VirtualBook();
-    result.style = source.style;
-    result.sections = VirtualBookSection.sectionsFromState(source.sections);
-    return result;
-  }
-
-  static getContentAttribute<T>(
-    source: VirtualBookContent,
-    attributeName: string
-  ): T | undefined {
-    if('attrs' in source && source.attrs) {
-      return source.attrs[attributeName];
-    }
-    return undefined
-  }
-
-  static getContentAttributes(
-    source: VirtualBookContent
-  ): ValueMap | undefined {
-    if('attrs' in source && source.attrs) {
-      return source.attrs;
-    }
-    return undefined
-  }
-
-  static getLocalContent(
-    source: VirtualBookContent | JSONContent[],
-    results: Record<string, VirtualBookContent> = {}
-  ): Record<string, VirtualBookContent> {
-    if(Array.isArray(source)) {
-      for(const item of source) {
-        VirtualBook.getLocalContent(item);
-      }
-    } else {
-      const key = VirtualBook.getContentAttribute<string>(
-        source,
-        VirtualBookContentAttributes.LOCAL_NAME
-      );
+  getContentMap(
+    getKeyFor: (source: VirtualBookContent) => string | undefined,
+  ): Record<string, VirtualBookContentReference[]> {
+    const contentMap: Record<string, VirtualBookContentReference[]> = {};
+    this.traverseContents((content, section, node) => {
+      const key = getKeyFor(content);
       if(key) {
-        results[key] = source;
-      } else if(source.content) {
-        VirtualBook.getLocalContent(source.content);
+        const ref = new VirtualBookContentReference(
+          DescentResult.clone(section),
+          node ? DescentResult.clone(node) : undefined,
+        );
+        if(contentMap[key]) {
+          contentMap[key].push(ref)
+        } else {
+          contentMap[key] = [ref];
+        }
+      }
+    });
+    return contentMap;
+  }
+
+  getSection(key: ValidKey): VirtualBookContentReference | null {
+    const section = getNestedValue(
+      this,
+      [ key ],
+      VirtualBook.sectionStrategy,
+    );
+    return new VirtualBookContentReference(section);
+  }
+
+  findContent(
+    options: Partial<VirtualBookContentSearchOptions>,
+    cachedData?: VirtualBookDerivedData | null,
+  ): VirtualBookContentReference[] {
+    if(options.id) {
+      const contentMap = cachedData?.contentById.values || this.contentById;
+      const refs = contentMap[options.id];
+      if(refs) {
+        return refs;
       }
     }
-    return results;
+    if(options.section?.path) {
+      const sectionResult = getNestedValue(
+        this,
+        options.section.path,
+        VirtualBook.sectionStrategy,
+      );
+      return [
+        new VirtualBookContentReference(sectionResult)
+      ];
+    }
+    return [];
+  }
+
+  traverseContents(
+    callback: (
+      content: VirtualBookContent,
+      sections: DescentResult<VirtualBook, ValidKey, VirtualBookSection>,
+      nodes?: DescentResult<VirtualBookSection, ValidKey, VirtualBookContentNode>,
+    ) => boolean | void,
+  ): void {
+    traverseContents(
+      this,
+      {
+        preOrder: (section, sectionState, sectionStrategy) => {
+          const sectionResult = new DescentResult(
+            sectionState,
+            sectionStrategy,
+          );
+          callback(section, sectionResult);
+          traverseContents(
+            section,
+            {
+              preOrder: (node, nodeState, nodeStrategy) => callback(
+                node,
+                sectionResult,
+                new DescentResult(
+                  nodeState,
+                  nodeStrategy,
+                )
+              ),
+            },
+            VirtualBookSection.contentStrategy,
+          )
+        },
+      },
+      VirtualBook.sectionStrategy,
+    );
+  }
+
+  static filterContentMap(
+    source: Record<string, VirtualBookContentReference[]>,
+    predicate: (source: VirtualBookContentReference) => boolean,
+  ): Record<string, VirtualBookContentReference[]> {
+    const contentMap: Record<string, VirtualBookContentReference[]> = {};
+    for(const key in source) {
+      const refs = source[key];
+      const filtered = refs.filter(predicate);
+      if(filtered.length) {
+        contentMap[key] = filtered;
+      }
+    }
+    return contentMap;
   }
 
   static getPathToSection(
@@ -285,264 +351,342 @@ export default class VirtualBook implements VirtualBookState {
     return undefined;
   }
 
-  static forContentIn(
-    source: VirtualBook,
-    callback: VirtualBookContentCallback,
-    path?: PathStep[],
-    target?: VirtualBookContent | VirtualBookContent[]
-  ): void {
-    if(path) {
-      const validatedTarget = target || VirtualBook.resolvePath(source, path);
-      if(Array.isArray(validatedTarget)) {
-        for(let i = 0; i < validatedTarget.length; i++) {
-          const item = validatedTarget[i] as VirtualBookContent;
-          const subpath = path ? path.concat(i) : [i];
-          VirtualBook.forContentIn(source, callback, subpath, item);
-        }
-      } else {
-        const targetContent = target as VirtualBookContent;
-        const signal = callback(targetContent, path, source);
-        if(signal !== false) {
-          if(targetContent.content) {
-            VirtualBook.forContentIn(
-              source,
-              callback,
-              path.concat('content'),
-              targetContent.content
-            );
-          }
-          if(targetContent.sections) {
-            VirtualBook.forContentIn(
-              source,
-              callback,
-              path.concat('sections'),
-              targetContent.sections
-            );
-          }
-        }
-      }
-    } else if(source.sections) {
-      VirtualBook.forContentIn(source, callback, ['sections'], source.sections);
+  static getContentId(target: VirtualBookContentContainer): string | undefined {
+    if('id' in target) {
+      return target.id;
+    }
+    const id = VirtualBook.getContentAttribute(
+      target,
+      VirtualBookNodeAttributes.CONTENT_ID,
+    );
+    if(id !== undefined) {
+      return String(id);
     }
   }
 
-  static searchBookContents(
-    source: VirtualBook,
-    options: Partial<VirtualBookContentSearchOptions>
-  ): VirtualBookContentSearchResult[] {
-    const results: VirtualBookContentSearchResult[] = [];
-    VirtualBook.forContentIn(
-      source,
-      (item: VirtualBookContent, path?: PathStep[]) => {
-        if(options.matchVia) {
-          const matched = options.matchVia(item, path, source);
-          if(!matched) {
-            return;
-          }
+  static getContentAttribute(
+    target: VirtualBookContentContainer,
+    key: string,
+  ): unknown {
+    if('attrs' in target && target.attrs) {
+      return target.attrs[key];
+    }
+  }
+
+  static sectionStrategy = new WrappedArrayStrategy<VirtualBook, VirtualBookSection> (
+    (source) => source.sections,
+  );
+
+  static createHRef(
+    callback: CreateHRef,
+    options: Partial<VirtualBookContentSearchOptions>,
+    propKey?: string,
+  ): string {
+    if(propKey) {
+      const wrapped = {
+        [propKey]: options,
+      };
+      return callback(wrapped);
+    }
+    return callback(options);
+  }
+
+  static cloneAttributes(
+    source: VirtualBookContentAttributeMap,
+    exclude?: string[],
+  ): VirtualBookContentAttributeMap {
+    const attrs: VirtualBookContentAttributeMap = {};
+    const keys = Object.keys(source);
+    if(exclude) {
+      for(const key of exclude) {
+        const index = keys.indexOf(key);
+        keys.splice(index, 1);
+      }
+    }
+    for(const key of keys) {
+      attrs[key] = cloneDeep(source[key]);
+    }
+    return attrs;
+  }
+
+  static cloneNode(
+    source: VirtualBookContentNode,
+  ): VirtualBookContentNode {
+    const result: VirtualBookContentNode = {};
+    if(source.type) {
+      result.type = source.type;
+    }
+    if(source.attrs) {
+      result.attrs = VirtualBook.cloneAttributes(
+        source.attrs,
+        [
+          VirtualBookNodeAttributes.CONTENT_ID,
+          VirtualBookNodeAttributes.GLOBAL_NAME,
+        ],
+      );
+    }
+    if(source.content) {
+      result.content = source.content.map(
+        node => VirtualBook.cloneNode(node)
+      );
+    }
+    if(source.text !== undefined) {
+      result.text = source.text;
+    }
+    return result;
+  }
+}
+
+export function cloneDeep(source:unknown): unknown {
+  if(typeof source === 'object') {
+    if(Array.isArray(source)) {
+      return source.map(item => cloneDeep(item));
+    }
+    if(source) {
+      const record = source as Record<string, unknown>;
+      const result: Record<string, unknown> = {};
+      for(const key in record) {
+        result[key] = cloneDeep(record[key]);
+      }
+      return result;
+    }
+  }
+  return source;
+}
+
+// Helper class for handling content references and navigation.
+
+export interface VirtualBookSearchPath {
+  section: ValidKey[],
+  node: ValidKey[],
+}
+
+export type SectionSearchResult = DescentResult<
+  VirtualBook,
+  ValidKey,
+  VirtualBookSection
+>;
+
+export type ContentNodeSearchResult = DescentResult<
+  VirtualBookSection,
+  ValidKey,
+  VirtualBookContentNode
+>;
+
+export class VirtualBookContentReference {
+  readonly section: SectionSearchResult;
+  readonly node?: ContentNodeSearchResult;
+
+  constructor(
+    section: SectionSearchResult,
+    node?: ContentNodeSearchResult,
+  ) {
+    this.section = section;
+    this.node = node;
+  }
+
+  get book(): VirtualBook {
+    return this.section.state.root;
+  }
+
+  get subsections(): VirtualBookContentReference[] {
+    if(this.section.value) {
+      return this.section.value.sections.map(
+        (subsection, index) => {
+          const result = this.section.getNestedValue([index]);
+          return new VirtualBookContentReference(result);
         }
-        results.push({ path: path || [] });
-        return false;
-      },
-      options.path
+      );
+    }
+    return [];
+  }
+
+  get nextSection(): VirtualBookContentReference | null {
+    const subsection = this.getSubsection(0);
+    if(subsection) {
+      return subsection;
+    }
+    const sibling = getSibling(
+      this.section.state,
+      1,
+      this.section.strategy,
+      true,
     );
+    if(sibling) {
+      return new VirtualBookContentReference(sibling);
+    }
+    return null;
+  }
+
+  get previousSection(): VirtualBookContentReference | null {
+    const sibling = getSibling(
+      this.section.state,
+      -1,
+      this.section.strategy,
+      true,
+    );
+    if(sibling) {
+      const leaf = getLeaf(
+        sibling.state.root,
+        -1,
+        this.section.strategy,
+        sibling.state.descent,
+      );
+      if(leaf?.value) {
+        return new VirtualBookContentReference(leaf);
+      }
+    }
+    return null;
+  }
+
+  get id(): string | null {
+    if(this.node) {
+      const node = this.node.value;
+      if(node) {
+        const id = VirtualBook.getContentId(node);
+        if(id) {
+          return id;
+        }
+      }
+    }
+    const section = this.section.value;
+    if(section) {
+      const id = VirtualBook.getContentId(section);
+      if(id) {
+        return id;
+      }
+    }
+    return null;
+  }
+
+  get propertyPath(): CommonKey[] {
+    const results: CommonKey[] = [];
+    let sectionParent: VirtualBook | VirtualBookSection = this.section.state.root;
+    for(let i = 0; i < this.section.state.descent.length; i++) {
+      const entry = this.section.state.descent[i];
+      if(entry?.value) {
+        const index = sectionParent.sections.indexOf(entry.value);
+        results.push('sections', index);
+        sectionParent = entry.value;
+      } else {
+        break;
+      }
+    }
+    if(this.node) {
+      let nodeParent: VirtualBookContent = this.node.state.root;
+      for(let i = 0; i < this.node.state.descent.length; i++) {
+        const entry = this.node.state.descent[i];
+        if(entry?.value && nodeParent.content) {
+          const index = nodeParent.content.indexOf(entry.value);
+          results.push('content', index);
+          nodeParent = entry.value;
+        } else {
+          break;
+        }
+      }
+    }
     return results;
   }
 
-  static searchResultToReference(
-    result: VirtualBookContentSearchResult,
-    source: VirtualBook
-  ): VirtualBookContentReference {
-    return {
-      source,
-      path: result.path,
-      value: VirtualBook.resolvePath(source, result.path) as VirtualBookContent,
-      collectionKey: result.path.length > 1
-        ? String(result.path[result.path.length - 2])
-        : undefined,
-      index: result.path.length > 1
-        ? Number(result.path[result.path.length - 1])
-        : undefined
-    };
-  }
-
-  static getContentId(target: VirtualBookContent): string | undefined {
-    if('id' in target) return target.id;
-    return VirtualBook.getContentAttribute<string>(
-      target,
-      VirtualBookContentAttributes.DOM_ID
-    );
-  }
-
-  static resolvePath(source: unknown, path: PathStep[]): unknown {
-    if(typeof source === 'object') {
-      let target = source as ValueMap;
-      for(let i = 0; i < path.length; i++) {
-        const step = path[i];
-        if(target && typeof target[step] === 'object') {
-          target = target[step] as ValueMap;
-        } else {
-          return undefined;
-        }
-      }
-      return target;
+  get sectionAncestry(): VirtualBookContentReference[] {
+    const refs: VirtualBookContentReference[] = [];
+    const numSections = this.node
+      ? this.section.state.descent.length
+      : this.section.state.descent.length - 1;
+    for(let i = 1; i <= numSections; i++) {
+      refs.push(
+        new VirtualBookContentReference(
+          new DescentResult(
+            {
+              root: this.section.state.root,
+              descent: this.section.state.descent.slice(0, i),
+            },
+            this.section.strategy,
+          ),
+        ),
+      );
     }
+    return refs;
   }
 
-  static getContentReferenceStack(
-    reference: VirtualBookContentReference
-  ): VirtualBookContentReference[] {
-    const stack: VirtualBookContentReference[] = [];
-    if(reference && reference.path) {
-      let parent: VirtualBook | VirtualBookContent | undefined = reference.source;
-      for(let i = 0; i < reference.path.length; i += 2) {
-        if(parent) {
-          const collectionKey = String(reference.path[i]);
-          const index = Number(reference.path[i + 1]);
-          const entry: VirtualBookContentReference = {
-            source: reference.source,
-            path: reference.path.slice(0, i + 2),
-            collectionKey,
-            index,
-          };
-          entry.value = VirtualBook.resolvePath(
-            parent,
-            [collectionKey, index]
-          ) as VirtualBookContent;
-          stack.push(entry);
-          parent = entry.value;
-        }
-      }
+  getContentLabel(
+    typeLabels = {
+      section: 'Section',
+      node: 'Content',
+    },
+  ): string {
+    if(this.node) {
+      const entry = this.node.finalEntry;
+      return entry
+        ? `${typeLabels.node} ${String(entry.key)}`
+        : typeLabels.node;
     }
-    return stack;
+    if(this.section) {
+      const entry = this.section.finalEntry;
+      return entry
+        ? entry.value?.title || `${typeLabels.section} ${String(entry.key)}`
+        : typeLabels.section;
+    }
+    return '';
   }
 
-  static getLastSeparateSubsection(
-    reference: VirtualBookContentReference
-  ): VirtualBookContentReference {
-    // If the section has separately displayed subsections, delegate to the
-    // last of those.
-    if(reference.value
-      && reference.value.sectionDisplay === SectionDisplayTypes.SHOW_SUBSECTIONS_SEPARATELY
-      && reference.value.sections.length
-      && reference.path
-    ) {
-      const lastIndex = reference.value.sections.length - 1;
-      return VirtualBook.getLastSeparateSubsection({
-        source: reference.source,
-        path: reference.path.concat('sections', lastIndex),
-        value: reference.value.sections[lastIndex],
-      })
-    }
-    // Pass back the reference we got.
-    return reference;
+  getSubsection(key: CommonKey): VirtualBookContentReference | null {
+    const result = this.section.getNestedValue([key]);
+    return result.value ? new VirtualBookContentReference(result) : null;
   }
 
-  static getNextSection(
-    reference: VirtualBookContentReference
-  ): VirtualBookContentReference | null {
-    // If the section has separately displayed children, put the first of those next.
-    if(reference
-      && reference.value
-      && reference.value.sectionDisplay === SectionDisplayTypes.SHOW_SUBSECTIONS_SEPARATELY
-      && reference.value.sections.length
-      && reference.path
-    ) {
-      return {
-        source: reference.source,
-        path: reference.path.concat('sections', 0),
-        value: reference.value.sections[0],
-      };
-    }
-    // Otherwise, move on up the stack to find the next available section.
-    const stack = VirtualBook.getContentReferenceStack(reference);
-    while(stack.length) {
-      const target = stack.pop();
-      if(target && target.path && target.collectionKey && target.index !== undefined) {
-        const parent = stack.length
-          ? stack[stack.length - 1].value
-          : target.source;
-        const collection = VirtualBook.resolvePath(
-          parent,
-          [target.collectionKey]
+  createHRef(
+    callbacks: Record<string, CreateHRef>,
+    propKey?: string,
+  ): string {
+    return this.createIdHREF(callbacks, propKey)
+      || this.createPathHREF(callbacks, propKey);
+  }
+
+  createIdHREF(
+    callbacks: Record<string, CreateHRef>,
+    propKey?: string,
+  ): string {
+    if(callbacks[StandardVirtualBookRoutes.FIND_CONTENT_BY_ID]) {
+      const id = this.id;
+      if(id) {
+        return VirtualBook.createHRef(
+          callbacks[StandardVirtualBookRoutes.FIND_CONTENT_BY_ID],
+          {
+            id,
+          },
+          propKey,
         );
-        if(Array.isArray(collection)) {
-          const nextIndex = target.index + 1;
-          const nextTarget = collection[nextIndex];
-          if(nextTarget) {
-            const basePath = target.path.slice(0, target.path.length - 1);
-            return {
-              source: reference.source,
-              path: basePath.concat(nextIndex),
-              value: nextTarget,
-            };
-          }
-        }
       }
     }
-    return null;
+    return '';
   }
 
-  static getPreviousSection(
-    reference: VirtualBookContentReference
-  ): VirtualBookContentReference | null {
-    const stack = VirtualBook.getContentReferenceStack(reference);
-    while(stack.length) {
-      const target = stack.pop();
-      if(target && target.path && target.collectionKey && target.index !== undefined) {
-        const parent = stack.length
-          ? stack[stack.length - 1].value
-          : target.source;
-        const collection = VirtualBook.resolvePath(
-          parent,
-          [target.collectionKey]
-        );
-        if(Array.isArray(collection)) {
-          const nextIndex = target.index - 1;
-          const nextTarget = collection[nextIndex];
-          if(nextTarget) {
-            const basePath = target.path.slice(0, target.path.length - 1);
-            const targetReference: VirtualBookContentReference = {
-              source: reference.source,
-              path: basePath.concat(nextIndex),
-              value: nextTarget,
-            };
-            return VirtualBook.getLastSeparateSubsection(targetReference);
-          }
-          // If we're the first separately displayed subsection of our parent,
-          // shift the display to that parent.
-          if(parent && 'content' in parent) {
-            const parentSection = parent as VirtualBookSection;
-            if(parentSection.sectionDisplay === SectionDisplayTypes.SHOW_SUBSECTIONS_SEPARATELY
-              && nextIndex === -1
-            ) {
-              return {
-                source: reference.source,
-                path: target.path.slice(0, target.path.length - 2),
-                value: parent as VirtualBookSection,
-              }
-            }
-          }
-        }
-      }
+  createPathHREF(
+    callbacks: Record<string, CreateHRef>,
+    propKey?: string,
+  ): string {
+    if(callbacks[StandardVirtualBookRoutes.FIND_CONTENT_AT]) {
+      return VirtualBook.createHRef(
+        callbacks[StandardVirtualBookRoutes.FIND_CONTENT_AT],
+        {
+          section: {
+            path: this.section.path,
+          },
+          node: {
+            path: this.node?.path || [],
+          },
+        },
+        propKey,
+      );
     }
-    return null;
+    return '';
   }
+}
 
-  static templatize(source:JSONContent): JSONContent {
-    const template = { ...source };
-    if(template.attrs) {
-      template.attrs = { ...template.attrs };
-      const excludedAttributes = [
-        VirtualBookContentAttributes.TEMPLATE_SOURCE,
-        VirtualBookContentAttributes.GLOBAL_NAME,
-        VirtualBookContentAttributes.LOCAL_NAME,
-      ];
-      for(const attribute of excludedAttributes) {
-        if(template.attrs[attribute]) {
-          delete template.attrs[attribute];
-        }
-      }
-    }
-    return template;
-  }
+export type CreateHRef = (values?: unknown) => string;
+
+export enum StandardVirtualBookRoutes {
+  FIND_CONTENT_AT = 'findContentAt',
+  FIND_CONTENT_BY_ID = 'findContentById',
 }

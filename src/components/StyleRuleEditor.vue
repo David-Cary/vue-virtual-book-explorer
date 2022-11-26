@@ -40,7 +40,8 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { PlusIcon, MinusIcon } from 'vue-feather-icons'
-import { StyleRuleMap, StringMap, PathStep } from '@/classes/VirtualBook'
+import { StyleRuleMap, StringMap } from '@/classes/VirtualBook'
+import { CommonKey } from '@/ts/utilities/TraversalState'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import StyleRuleDeclarationEditor from '@/components/StyleRuleDeclarationEditor.vue'
 
@@ -92,7 +93,7 @@ export default class StyleRuleEditor extends Vue {
 
   onDeclarationChange(change: ValueChangeDescription<string>): void {
     if(this.selector && change.path) {
-      const basePath: PathStep[] = [this.selector];
+      const basePath: CommonKey[] = [this.selector];
       change.path = basePath.concat(change.path);
       this.$emit('change', change);
     }

@@ -1,7 +1,7 @@
 <template>
-  <div v-if="model">
+  <div v-if="sectionRef">
     <div class="vbook-table-of-contents-header">
-      <div v-if="model.sections && model.sections.length">
+      <div v-if="sectionRef.section.value.sections.length">
         <ChevronDownIcon
           v-if="isOpen"
           @click="isOpen = false"
@@ -13,19 +13,15 @@
       </div>
       <div v-else>&nbsp;</div>
       <div>
-        <VirtualBookContentLink
-          :target="model"
-          :path="path"
-        />
+        <VirtualBookContentLink :contentRef="sectionRef"/>
       </div>
     </div>
     <div v-if="isOpen">
       <TableOfContentsSection
-        v-for="(section, index) of model.sections"
+        v-for="(section, index) of sectionRef.section.sections"
         :key="index"
         class="vbook-table-of-contents-subsections"
-        :model="section"
-        :basePath="path"
+        :parentRef="sectionRef"
         :index="index"
       />
     </div>
@@ -36,7 +32,9 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { ChevronRightIcon, ChevronDownIcon } from 'vue-feather-icons'
-import { VirtualBookSection, PathStep } from '@/classes/VirtualBook'
+import VirtualBook, {
+  VirtualBookContentReference
+} from '@/classes/VirtualBook'
 import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
 
 @Component ({
@@ -47,18 +45,22 @@ import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
   }
 })
 export default class TableOfContentsSection extends Vue {
-  @Prop() model?: VirtualBookSection;
-  @Prop() basePath?: PathStep[];
+  @Prop() book?: VirtualBook;
+  @Prop() parentRef?: VirtualBookContentReference;
   @Prop() index?: number;
 
   isOpen = false;
 
-  get path(): PathStep[] {
-    const base: PathStep[] = this.basePath ? this.basePath : [];
+  get sectionRef(): VirtualBookContentReference | null {
     if(this.index !== undefined) {
-      return base.concat('sections', this.index);
+      if(this.parentRef) {
+        return this.parentRef.getSubsection(this.index);
+      }
+      if(this.book) {
+        return this.book.getSection(this.index);
+      }
     }
-    return base;
+    return null;
   }
 }
 </script>

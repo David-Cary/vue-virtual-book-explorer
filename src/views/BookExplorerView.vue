@@ -25,7 +25,7 @@ export default class BookExplorerView extends Vue {
   book: VirtualBook | null = null;
 
   refreshBook(): void {
-    this.book = VirtualBook.fromState(this.$store.state.book);
+    this.book = new VirtualBook(this.$store.state.book);
   }
 
   created(): void {

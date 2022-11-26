@@ -16,10 +16,13 @@
 
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { cloneDeep } from 'lodash'
 import { FolderPlusIcon, ClipboardIcon, PlusIcon } from 'vue-feather-icons'
-import VirtualBook, { VirtualBookSection } from '@/classes/VirtualBook'
+import VirtualBook, {
+  VirtualBookSection,
+  VirtualBookContentReference,
+} from '@/classes/VirtualBook'
 import { InsertValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEngine'
+import { CommonKey } from '@/ts/utilities/TraversalState';
 
 @Component ({
   components: {
@@ -29,8 +32,8 @@ import { InsertValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEn
   }
 })
 export default class VirtualBookSectionInjector extends Vue {
-  @Prop() source?: VirtualBook;
-  @Prop() basePath?: (string | number)[];
+  @Prop() book?: VirtualBook;
+  @Prop() parentRef?: VirtualBookContentReference;
   @Prop() index?: number;
 
   get copiedSection(): VirtualBookSection | undefined {
@@ -41,8 +44,8 @@ export default class VirtualBookSectionInjector extends Vue {
     return undefined;
   }
 
-  get injectionPath(): (string | number)[] {
-    const basePath: (string | number)[] = this.basePath ? this.basePath : [];
+  get injectionPath(): CommonKey[] {
+    const basePath: CommonKey[] = this.parentRef?.propertyPath || [];
     const index = this.index !== undefined ? this.index : 0;
     return basePath.concat('sections',  index);
   }
@@ -57,16 +60,19 @@ export default class VirtualBookSectionInjector extends Vue {
 
   onPasteSubsection(): void {
     // Add clipboard content.
-    const request = new InsertValueRequest(
-      this.injectionPath,
-      cloneDeep(this.copiedSection)
-    );
-    this.$emit('change', request);
+    if(this.copiedSection) {
+      const request = new InsertValueRequest(
+        this.injectionPath,
+        VirtualBookSection.cloneSection(this.copiedSection)
+      );
+      this.$emit('change', request);
+    }
     // Check for if the content should be removed from it's origin.
     if(this.$store.state.clipboard?.remove) {
-      if(this.source && this.copiedSection) {
+      const book = this.parentRef?.section.state.root || this.book;
+      if(book && this.copiedSection) {
         const removalPath = VirtualBook.getPathToSection(
-          this.source,
+          book,
           this.copiedSection
         );
         if(removalPath) {

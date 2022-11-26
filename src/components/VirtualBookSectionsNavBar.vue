@@ -2,16 +2,10 @@
   <div class="vbook-section-nav-bar">
     <div v-if="previousSection">
       <ChevronLeftIcon size="1x"/>
-      <VirtualBookContentLink
-        :path="previousSection.path"
-        :target="previousSection.value"
-      />
+      <VirtualBookContentLink :contentRef="previousSection"/>
     </div>
     <div v-if="nextSection">
-      <VirtualBookContentLink
-        :path="nextSection.path"
-        :target="nextSection.value"
-      />
+      <VirtualBookContentLink :contentRef="nextSection"/>
       <ChevronRightIcon size="1x"/>
     </div>
   </div>
@@ -20,9 +14,7 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { ChevronLeftIcon, ChevronRightIcon } from 'vue-feather-icons'
-import VirtualBook, {
-  VirtualBookContentReference,
-} from '@/classes/VirtualBook'
+import { VirtualBookContentReference } from '@/classes/VirtualBook'
 import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
 
 @Component ({
@@ -33,20 +25,14 @@ import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
   }
 })
 export default class VirtualBookSectionsNavBar extends Vue {
-  @Prop() reference?: VirtualBookContentReference;
+  @Prop() currentContent?: VirtualBookContentReference;
 
   get nextSection(): VirtualBookContentReference | null {
-    if(this.reference) {
-      return VirtualBook.getNextSection(this.reference);
-    }
-    return null;
+    return this.currentContent?.nextSection || null;
   }
 
   get previousSection(): VirtualBookContentReference | null {
-    if(this.reference) {
-      return VirtualBook.getPreviousSection(this.reference);
-    }
-    return null;
+    return this.currentContent?.previousSection || null;
   }
 }
 </script>

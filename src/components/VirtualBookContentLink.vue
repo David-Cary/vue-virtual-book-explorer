@@ -1,80 +1,56 @@
 <template>
-  <a :href="contentUrl">{{activeTitle}}</a>
+  <a :href="href" :target="linkTarget">{{linkText}}</a>
 </template>
 
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { RouteRecordPublic } from 'vue-router'
-import { VirtualBookContent, PathStep } from '@/classes/VirtualBook'
+import {
+  VirtualBookContentReference,
+  CreateHRef,
+} from '@/classes/VirtualBook'
 
 @Component
 export default class VirtualBookContentLink extends Vue {
-  @Prop() target?: VirtualBookContent;
-  @Prop() path?: PathStep[];
-
-  get sectionIndices(): number[] {
-    const indices = [];
-    if(this.path) {
-      for(let i = 0; i < this.path.length; i++) {
-        if(this.path[i] === 'sections') {
-          i++;
-          if(typeof this.path[i] === 'number') {
-            indices.push(Number(this.path[i]));
-            continue;
-          }
-        }
-        return [];
-      }
-    }
-    return indices;
-  }
-
-  get activeTitle(): string {
-    if(this.target?.title) {
-      return this.target.title;
-    }
-    if(this.path?.length) {
-      const index = this.path[this.path.length - 1];
-      if(typeof index === 'number') {
-        return `Section ${index + 1}`;
-      }
-    }
-    return 'Unknown Section';
-  }
+  @Prop() contentRef?: VirtualBookContentReference;
+  @Prop() linkByPath?: boolean;
+  @Prop() text?: string;
+  @Prop() target?: string;
 
   get routes(): RouteRecordPublic[] {
     return this.$router.getRoutes();
   }
 
-  get routeUrlMap(): {[k: string]: string} {
-    const urls: {[k: string]: string} = {};
+  get routeCallbacks(): Record<string, CreateHRef> {
+    const map: Record<string, CreateHRef> = {};
     for(const route of this.routes) {
-      if(route.name) {
-        urls[route.name] = `#${route.path}`;
+      const callback = route.meta.createHRef;
+      if(route.name && callback) {
+        map[route.name] = callback;
       }
     }
-    return urls;
+    return map;
   }
 
-  get showByIdUrl(): string | undefined {
-    return this.routeUrlMap['Show Content By Id'];
-  }
-
-  get sectionPathUrl(): string | undefined {
-    return this.routeUrlMap['Show Section By Indices'];
-  }
-
-  get contentUrl(): string {
-    // Check for content id.
-    if(this.target?.id && this.showByIdUrl) {
-     return this.showByIdUrl.replace(':content_id', this.target.id);
-    }
-    // Check for section path.
-    if(this.sectionIndices.length && this.sectionPathUrl) {
-      const indexPath = this.sectionIndices.join('/');
-      return this.sectionPathUrl.replace('*', indexPath);
+  get href(): string {
+    if(this.contentRef) {
+      const propKey = 'searchOptions';
+      return this.linkByPath
+        ? this.contentRef.createPathHREF(this.routeCallbacks, propKey)
+        : this.contentRef.createHRef(this.routeCallbacks, propKey);
     }
     return '';
+  }
+
+  get linkTarget(): string {
+    return this.target || '_self';
+  }
+
+  get linkText(): string {
+    if(this.text) {
+      return this.text;
+    }
+    return this.contentRef?.getContentLabel() || '';
   }
 }
 </script>

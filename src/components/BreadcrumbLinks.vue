@@ -1,14 +1,20 @@
 <template>
   <span>
-    <ChevronRightIcon size="1x"/>
     <span
-      v-for="(link, index) of linkData"
+      v-for="(item, index) of contentAncestry"
       :key="index"
     >
-      <ChevronRightIcon v-if="index" size="1x"/>
+      <ChevronRightIcon size="1x"/>
       <VirtualBookContentLink
-        :path="link.path"
-        :target="link.value"
+        :contentRef="item"
+        :linkByPath="linkByPath"
+      />
+    </span>
+    <span v-if="showContentLink">
+      <ChevronRightIcon size="1x"/>
+      <VirtualBookContentLink
+        :contentRef="currentContent"
+        :linkByPath="linkByPath"
       />
     </span>
   </span>
@@ -17,7 +23,7 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { ChevronRightIcon } from 'vue-feather-icons'
-import VirtualBook, { VirtualBookContentReference } from '@/classes/VirtualBook'
+import { VirtualBookContentReference } from '@/classes/VirtualBook'
 import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
 
 @Component ({
@@ -27,14 +33,12 @@ import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
   }
 })
 export default class BreadcrumbLinks extends Vue {
-  @Prop() reference?: VirtualBookContentReference;
+  @Prop() currentContent?: VirtualBookContentReference;
+  @Prop() showContentLink?: boolean;
+  @Prop() linkByPath?: boolean;
 
-  get linkData(): VirtualBookContentReference[] {
-    if(this.reference) {
-      const stack = VirtualBook.getContentReferenceStack(this.reference);
-      return stack.slice(0, stack.length - 1);
-    }
-    return [];
+  get contentAncestry(): VirtualBookContentReference[] {
+    return this.currentContent?.sectionAncestry || [];
   }
 }
 </script>

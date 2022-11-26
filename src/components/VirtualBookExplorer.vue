@@ -36,41 +36,40 @@
             :key="index"
             class="vbook-search-result"
           >
-            <BreadcrumbLinks :reference="item"/>
-            <span v-if="item.value.title">
-              <ChevronRightIcon size="1x"/>
-              <VirtualBookContentLink
-                :path="item.path"
-                :target="item.value"
-              />
-            </span>
+            <BreadcrumbLinks
+              :currentContent="item"
+              :showContentLink="true"
+              :linkByPath="true"
+            />
           </div>
         </div>
         <div
           v-else-if="matchingContent.length === 1"
         >
           <div class="vbook-breadcrumbs-bar">
-            <BreadcrumbLinks :reference="targetContent"/>
+            <BreadcrumbLinks :currentContent="targetContent"/>
           </div>
           <div class="vbook-body">
-            <VirtualBookSectionRenderer
-              v-if="targetContent.value"
-              :source="model"
-              :path="targetContent.path"
-              :value="targetContent.value"
-              :editable="editing"
-              @change="$emit('change', $event)"
-            />
             <VirtualBookSnippetRenderer
-              v-else
-              :source="model"
-              :path="targetContent.path"
+              v-if="targetNode"
+              :value="targetContent"
+              :cachedSourceData="derivedData"
               :editable="editing"
               placeholder="Target Content"
               @change="$emit('change', $event)"
             />
+            <VirtualBookSectionRenderer
+              v-else
+              :value="targetContent"
+              :cachedSourceData="derivedData"
+              :editable="editing"
+              @change="$emit('change', $event)"
+            />
           </div>
-          <VirtualBookSectionsNavBar :reference="targetContent"/>
+          <VirtualBookSectionsNavBar
+            v-if="!targetNode"
+            :currentContent="targetContent"
+          />
         </div>
         <div v-else>Content Not Found</div>
       </div>
@@ -138,9 +137,10 @@ import {
 import VirtualBook, {
   VirtualBookContentSearchOptions,
   VirtualBookContentReference,
-  PathStep,
   VirtualBookDerivedData,
+  VirtualBookContentNode,
 } from '@/classes/VirtualBook'
+import { CommonKey } from '@/ts/utilities/TraversalState'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
 import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.vue'
@@ -200,16 +200,17 @@ export default class VirtualBookExplorer extends Vue {
 
   get matchingContent(): VirtualBookContentReference[] | null {
     if(this.model && this.searchOptions) {
-      const results = VirtualBook.searchBookContents(this.model, this.searchOptions);
-      return results.map(
-        result => VirtualBook.searchResultToReference(result, this.model as VirtualBook)
-      );
+      return this.model.findContent(this.searchOptions, this.derivedData);
     }
     return [];
   }
 
   get targetContent(): VirtualBookContentReference | null {
     return this.matchingContent?.length ? this.matchingContent[0] : null;
+  }
+
+  get targetNode(): VirtualBookContentNode | null {
+    return this.targetContent?.node?.value || null;
   }
 
   get derivedData(): VirtualBookDerivedData | null {
@@ -240,7 +241,7 @@ export default class VirtualBookExplorer extends Vue {
   }
 
   onStyleChange(change: ValueChangeDescription<unknown>): void {
-    let path: PathStep[] = ['style'];
+    let path: CommonKey[] = ['style'];
     if(change.path) {
       path = path.concat(change.path);
     }

@@ -9,20 +9,19 @@
       <VirtualBookSectionInjector
         v-if="editable"
         :key="'add-at-'+index"
-        :source="model"
+        :book="model"
         :index="index"
         @change="$emit('change', $event)"
       />
       <TableOfContentsSection
         :key="index"
-        :model="section"
+        :book="model"
         :index="index"
-        :baseURL="baseURL"
       />
     </template>
     <VirtualBookSectionInjector
       v-if="editable"
-      :source="model"
+      :book="model"
       :index="model.sections.length"
       @change="$emit('change', $event)"
     />
@@ -44,7 +43,6 @@ import VirtualBookSectionInjector from '@/components/VirtualBookSectionInjector.
 })
 export default class TableOfContents extends Vue {
   @Prop() model?: VirtualBook;
-  @Prop() baseURL?: string;
   @Prop() editable?: boolean;
 }
 </script>
