@@ -103,7 +103,7 @@ export class VirtualBookSection implements VirtualBookSectionState {
     const cloned = new VirtualBookSection();
     cloned.title = source.title;
     cloned.content = source.content.map(
-      node => VirtualBook.cloneNode(node)
+      node => VirtualBook.cloneNode(node, GlobalNodeIdentifierAttributes)
     );
     cloned.sections = source.sections.map(
       subsection => VirtualBookSection.cloneSection(subsection)
@@ -159,7 +159,7 @@ export function mapRecord<S, T = S>(
 export interface VirtualBookDerivedData {
   contentById: RecordWithKeys<VirtualBookContentReference[]>;
   globalContent: RecordWithKeys<VirtualBookContentReference[]>;
-  templates: RecordWithKeys<VirtualBookContentReference[]>;
+  templates: RecordWithKeys<VirtualBookContentNode>;
 }
 
 export interface VirtualBookContentSearchOptions {
@@ -176,6 +176,15 @@ export enum VirtualBookNodeAttributes {
   LOCAL_NAME = 'localName',
   TEMPLATE_FLAG = 'isTemplate',
 }
+
+export const GlobalNodeIdentifierAttributes = [
+  VirtualBookNodeAttributes.CONTENT_ID,
+  VirtualBookNodeAttributes.GLOBAL_NAME,
+];
+
+export const TemplateAttributes = GlobalNodeIdentifierAttributes.concat(
+  VirtualBookNodeAttributes.TEMPLATE_FLAG,
+);
 
 export default class VirtualBook implements VirtualBookState {
   style: StyleRuleMap = {};
@@ -208,18 +217,7 @@ export default class VirtualBook implements VirtualBookState {
 
   get derivedData(): VirtualBookDerivedData {
     const globalContent = this.globalContent;
-    const templates = VirtualBook.filterContentMap(
-      this.globalContent,
-      item => {
-        if(item.section.value) {
-          return Boolean(VirtualBook.getContentAttribute(
-            item.section.value,
-            VirtualBookNodeAttributes.TEMPLATE_FLAG,
-          ));
-        }
-        return false;
-      },
-    );
+    const templates = VirtualBook.extractTemplates(globalContent);
     return {
        contentById: getRecordWithKeys(this.contentById, true),
        globalContent: getRecordWithKeys(globalContent, true),
@@ -317,21 +315,6 @@ export default class VirtualBook implements VirtualBookState {
     );
   }
 
-  static filterContentMap(
-    source: Record<string, VirtualBookContentReference[]>,
-    predicate: (source: VirtualBookContentReference) => boolean,
-  ): Record<string, VirtualBookContentReference[]> {
-    const contentMap: Record<string, VirtualBookContentReference[]> = {};
-    for(const key in source) {
-      const refs = source[key];
-      const filtered = refs.filter(predicate);
-      if(filtered.length) {
-        contentMap[key] = filtered;
-      }
-    }
-    return contentMap;
-  }
-
   static getPathToSection(
     source: VirtualBook | VirtualBookSection,
     target: VirtualBookSection
@@ -411,6 +394,7 @@ export default class VirtualBook implements VirtualBookState {
 
   static cloneNode(
     source: VirtualBookContentNode,
+    exclude?: string[],
   ): VirtualBookContentNode {
     const result: VirtualBookContentNode = {};
     if(source.type) {
@@ -419,21 +403,43 @@ export default class VirtualBook implements VirtualBookState {
     if(source.attrs) {
       result.attrs = VirtualBook.cloneAttributes(
         source.attrs,
-        [
-          VirtualBookNodeAttributes.CONTENT_ID,
-          VirtualBookNodeAttributes.GLOBAL_NAME,
-        ],
+        exclude,
       );
     }
     if(source.content) {
       result.content = source.content.map(
-        node => VirtualBook.cloneNode(node)
+        node => VirtualBook.cloneNode(node, exclude)
       );
     }
     if(source.text !== undefined) {
       result.text = source.text;
     }
     return result;
+  }
+
+  static extractTemplates(
+    source: Record<string, VirtualBookContentReference[]>,
+  ): Record<string, VirtualBookContentNode> {
+    const templates: Record<string, VirtualBookContentNode> = {};
+    for(const key in source) {
+      const items = source[key];
+      if(items.length === 1) {
+        const node = items[0].node?.value;
+        if(node) {
+          const isTemplate = VirtualBook.getContentAttribute(
+            node,
+            VirtualBookNodeAttributes.TEMPLATE_FLAG,
+          );
+          if(isTemplate) {
+            templates[key] = VirtualBook.cloneNode(
+              node,
+              TemplateAttributes,
+            );
+          }
+        }
+      }
+    }
+    return templates;
   }
 }
 
