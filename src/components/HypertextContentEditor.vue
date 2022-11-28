@@ -132,6 +132,14 @@
           >
           <label>Is Template</label>
         </div>
+        <div v-if="selectedNode.node.type.attrs.isTemplateContent">
+          <input
+            type="checkbox"
+            :checked="selectedNode.node.attrs.isTemplateContent"
+            @change="toggleIsTemplateContent(selectedNode)"
+          >
+          <label>Is Template Content</label>
+        </div>
         <TableEditor
           v-if="tableElementSelected"
           :editor="editor"
@@ -385,9 +393,18 @@ export default class HypertextContentEditor extends Vue {
           DOMName: 'data-is-template',
           dataType: 'boolean'
         },
+        contentTypes: [
+          'snippet',
+        ],
+        contentAttribute: {
+          name: 'isTemplateContent',
+          DOMName: 'data-is-template-content',
+          dataType: 'boolean'
+        },
       }),
       InlineInstance.configure({
-        getTemplate: id => this.contextData?.templates?.values[id] || null
+        getTemplate: id => this.contextData?.templates?.values[id] || null,
+        contentQuery: '[data-is-template-content]',
       }),
       ValueNodes.configure({
         types: [
@@ -656,10 +673,18 @@ export default class HypertextContentEditor extends Vue {
   }
 
   toggleIsTemplate(ref: NodeWithPos): void {
-    const isTemplate = !ref.node.attrs.isTemplate;
+    const value = ref.node.attrs.isTemplate ? undefined : true;
     this.editor
       .chain()
-      .setNodeAsTemplate(ref.pos, isTemplate)
+      .setNodeAsTemplate(ref.pos, value)
+      .run();
+  }
+
+  toggleIsTemplateContent(ref: NodeWithPos): void {
+    const value = ref.node.attrs.isTemplateContent ? undefined : true;
+    this.editor
+      .chain()
+      .setTemplateContent(ref.pos, value)
       .run();
   }
 

@@ -2,6 +2,8 @@ import {
   Extension,
   mergeAttributes,
   JSONContent,
+  GlobalAttributes,
+  findParentNodeClosestToPos,
 } from '@tiptap/core'
 import {
   CreateAttributeOptions,
@@ -21,6 +23,8 @@ export interface JSONCloningMap {
 export interface TemplateNodesOptions {
   types: string[];
   markerAttribute?: Partial<CreateAttributeOptions<unknown>>;
+  contentTypes: string[];
+  contentAttribute?: Partial<CreateAttributeOptions<unknown>>;
   cloneJSON: CloneTemplateValue<JSONContent>;
   cloningMap: Record<string, CloneTemplateValue<unknown>>;
   cloneValue: CloneTemplateValue<unknown>;
@@ -43,6 +47,10 @@ declare module '@tiptap/core' {
         pos: number,
         value: unknown,
       ) => ReturnType,
+      /**
+       * Sets a node as the contentDom for it's containing template.
+       */
+      setTemplateContent: (pos: number, value: unknown) => ReturnType,
     }
   }
 }
@@ -53,6 +61,7 @@ export const TemplateNodes = Extension.create<TemplateNodesOptions>({
   addOptions() {
     return {
       types: [],
+      contentTypes: [],
       cloneJSON: (source, options?, depth = 0) => {
         const results: JSONContent = {};
         if(typeof source === 'object' && source && options) {
@@ -95,18 +104,26 @@ export const TemplateNodes = Extension.create<TemplateNodesOptions>({
   },
 
   addGlobalAttributes() {
+    const rules: GlobalAttributes = [];
     if(this.options.markerAttribute?.name) {
-      const attributeName = this.options.markerAttribute?.name;
-      return [
-        {
-          types: this.options.types,
-          attributes: {
-            [attributeName]: createAttribute(this.options.markerAttribute),
-          }
+      const attributeName = this.options.markerAttribute.name;
+      rules.push({
+        types: this.options.types,
+        attributes: {
+          [attributeName]: createAttribute(this.options.markerAttribute),
         }
-      ];
+      });
     }
-    return [];
+    if(this.options.contentAttribute?.name) {
+      const attributeName = this.options.contentAttribute.name;
+      rules.push({
+        types: this.options.types,
+        attributes: {
+          [attributeName]: createAttribute(this.options.contentAttribute),
+        }
+      });
+    }
+    return rules;
   },
 
   addCommands() {
@@ -126,6 +143,11 @@ export const TemplateNodes = Extension.create<TemplateNodesOptions>({
         if(this.options.markerAttribute?.name) {
           const attributeName = this.options.markerAttribute.name;
           tr.setNodeAttribute(pos, attributeName, value);
+          // Becoming a template removes template content status.
+          if(this.options.contentAttribute?.name) {
+            const contentName = this.options.contentAttribute.name;
+            tr.setNodeAttribute(pos, contentName, undefined);
+          }
           return node?.attrs[attributeName] === value;
         }
         if(typeof value === 'object' && value) {
@@ -136,6 +158,33 @@ export const TemplateNodes = Extension.create<TemplateNodesOptions>({
         }
         return true;
       },
+      setTemplateContent: (pos: number, value: unknown) => ({ tr }) => {
+        const markerAttribute = this.options.markerAttribute?.name;
+        const contentAttribute = this.options.contentAttribute?.name;
+        if(markerAttribute && contentAttribute) {
+          const resolved = tr.doc.resolve(pos);
+          const template = findParentNodeClosestToPos(
+            resolved,
+            node => node.attrs[markerAttribute] !== undefined,
+          )
+          if(template) {
+            // Wipe previous content area.
+            template.node.descendants((node, nodePos) => {
+              if(node.attrs[contentAttribute] !== undefined) {
+                const adjustedPos = template.start + nodePos;
+                tr.setNodeAttribute(adjustedPos, contentAttribute, undefined);
+              }
+            });
+            if(value !== undefined) {
+              // Content areas can not be their own templates.
+              tr.setNodeAttribute(pos, markerAttribute, undefined);
+              tr.setNodeAttribute(pos, contentAttribute, value);
+            }
+            return true;
+          }
+        }
+        return false;
+      }
     };
   },
 });

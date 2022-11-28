@@ -9,6 +9,7 @@ import { Node as PMNode } from 'prosemirror-model'
 export interface InlineInstanceOptions {
   HTMLAttributes: Record<string, unknown>,
   getTemplate: (id: string) => JSONContent | null,
+  contentQuery?: string,
 }
 
 export const InlineInstance = Node.create<InlineInstanceOptions>({
@@ -90,12 +91,17 @@ export const InlineInstance = Node.create<InlineInstanceOptions>({
         dom.innerHTML = '-';
       }
 
+      let contentDOM: Element | null = null;
       if(dom) {
         dom.setAttribute('data-type', this.name);
+        if(this.options.contentQuery) {
+          contentDOM = dom.querySelector(this.options.contentQuery);
+        }
       }
 
       return {
         dom,
+        contentDOM,
       }
     }
   },

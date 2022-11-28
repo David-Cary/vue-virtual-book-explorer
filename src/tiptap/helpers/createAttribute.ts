@@ -13,9 +13,10 @@ export interface CreateAttributeOptions<T> {
 
 export function createAttribute<T>(
   options: Partial<CreateAttributeOptions<T>>
-): Partial<Attribute> {
-  const attr: Partial<Attribute> = {
+): Attribute {
+  const attr: Attribute = {
     default: options.defaultValue,
+    keepOnSplit: true,
   };
   if(options.name) {
     const name = options.name;

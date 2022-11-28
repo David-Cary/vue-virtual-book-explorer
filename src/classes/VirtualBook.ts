@@ -17,6 +17,7 @@ export interface TypedData {
 
 export interface VirtualBookTextNodeState extends TypedData {
   text: string;
+  marks: TypedData[];
 }
 
 export interface VirtualBookIdentifiedNode {
@@ -383,7 +384,9 @@ export default class VirtualBook implements VirtualBookState {
     if(exclude) {
       for(const key of exclude) {
         const index = keys.indexOf(key);
-        keys.splice(index, 1);
+        if(index >= 0) {
+          keys.splice(index, 1);
+        }
       }
     }
     for(const key of keys) {
@@ -410,6 +413,9 @@ export default class VirtualBook implements VirtualBookState {
       result.content = source.content.map(
         node => VirtualBook.cloneNode(node, exclude)
       );
+    }
+    if(source.marks) {
+      result.marks = source.marks.map(mark => cloneDeep(mark) as TypedData);
     }
     if(source.text !== undefined) {
       result.text = source.text;
