@@ -18,8 +18,7 @@
       @change="onTitleChange($event)"
     />
     <HypertextContentEditor
-      :context="book"
-      :cachedContextData="sourceData"
+      :sourceData="sourceData"
       :content="section.content"
       :editable="editable"
       placeholder="Section Content"
@@ -52,7 +51,7 @@
           />
           <VirtualBookSectionRenderer
             v-if="sectionDisplay === 'full'"
-            :cachedSourceData="sourceData"
+            :sourceData="sourceData"
             :value="section"
             :editable="editable"
             :key="index"
@@ -96,10 +95,10 @@
 import { VNode } from 'vue'
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { clamp } from 'lodash'
-import VirtualBook, {
+import {
   VirtualBookContentReference,
   VirtualBookSection,
-  VirtualBookDerivedData,
+  VirtualBookDataCache,
 } from '@/classes/VirtualBook'
 import { CommonKey } from '@/ts/utilities/TraversalState'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
@@ -123,21 +122,11 @@ import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
 })
 export default class VirtualBookSectionRenderer extends Vue {
   @Prop() value?: VirtualBookContentReference;
-  @Prop() cachedSourceData?: VirtualBookDerivedData;
+  @Prop() sourceData?: VirtualBookDataCache;
   @Prop() editable?: boolean;
 
-  get book(): VirtualBook | null {
-    return this.value?.book || null;
-  }
-
-  get sourceData(): VirtualBookDerivedData | null {
-    return this.cachedSourceData
-      || this.book?.derivedData
-      || null;
-  }
-
   get contentIds(): string[] {
-    return this.sourceData?.contentById.keys || [];
+    return this.sourceData?.contentIds || [];
   }
 
   get section(): VirtualBookSection | null {

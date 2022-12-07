@@ -53,7 +53,7 @@
             <VirtualBookSnippetRenderer
               v-if="targetNode"
               :value="targetContent"
-              :cachedSourceData="derivedData"
+              :sourceData="sourceData"
               :editable="editing"
               placeholder="Target Content"
               @change="$emit('change', $event)"
@@ -61,7 +61,7 @@
             <VirtualBookSectionRenderer
               v-else
               :value="targetContent"
-              :cachedSourceData="derivedData"
+              :sourceData="sourceData"
               :editable="editing"
               @change="$emit('change', $event)"
             />
@@ -137,7 +137,7 @@ import {
 import VirtualBook, {
   VirtualBookContentSearchOptions,
   VirtualBookContentReference,
-  VirtualBookDerivedData,
+  VirtualBookDataCache,
   VirtualBookContentNode,
 } from '@/classes/VirtualBook'
 import { CommonKey } from '@/ts/utilities/TraversalState'
@@ -199,8 +199,8 @@ export default class VirtualBookExplorer extends Vue {
   previewHTML = '';
 
   get matchingContent(): VirtualBookContentReference[] | null {
-    if(this.model && this.searchOptions) {
-      return this.model.findContent(this.searchOptions, this.derivedData);
+    if(this.sourceData && this.searchOptions) {
+      return this.sourceData.findContent(this.searchOptions);
     }
     return [];
   }
@@ -213,8 +213,8 @@ export default class VirtualBookExplorer extends Vue {
     return this.targetContent?.node?.value || null;
   }
 
-  get derivedData(): VirtualBookDerivedData | null {
-    return this.model?.derivedData || null;
+  get sourceData(): VirtualBookDataCache | null {
+    return this.model ? new VirtualBookDataCache(this.model) : null;
   }
 
   onClickRevert(): void {

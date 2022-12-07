@@ -10,7 +10,7 @@ export type ForEachCallback<P, K, C> = (
   child: C,
   key: K,
   parent: P,
-) => void;
+) => boolean | void;
 
 export class NodeStrategy<R, K extends ValidKey = ValidKey, N = R> {
   getChild(
@@ -72,15 +72,28 @@ export class NodeStrategy<R, K extends ValidKey = ValidKey, N = R> {
   }
   forEach(
     source: R | N,
-    callback: ForEachCallback<unknown, CommonKey, N>,
+    callback: ForEachCallback<unknown, ValidKey, N>,
+    allowBreak = false,
   ): void {
     if(typeof source === 'object' && source) {
       if(Array.isArray(source)) {
-        source.forEach(callback);
+        if(allowBreak) {
+          for(let i = 0; i < source.length; i++) {
+            const result = callback(source[i], i, source);
+            if(result === false) {
+              break;
+            }
+          }
+        } else {
+          source.forEach(callback);
+        }
       } else {
         const record = source as unknown as Record<K, N>;
         for(const key in record) {
-          callback(record[key], key, record);
+          const result = callback(record[key], key, record);
+          if(allowBreak && result === false) {
+            break;
+          }
         }
       }
     }
@@ -256,6 +269,81 @@ export function extendDescent<R, K extends ValidKey, N>(
   }
 }
 
+export type FindNodeCallback<R, K extends ValidKey, N> = (
+  target: DescentStep<R, K, N>,
+  stack: TraversalState<R, K, N>,
+) => boolean | void;
+
+/**
+ * Returns the first matching node found.
+ */
+export function findNode<R, N = R>(
+  root: R,
+  predicate: FindNodeCallback<R, ValidKey, N>,
+  strategy: NodeStrategy<R, ValidKey, N> = new NodeStrategy(),
+): DescentResult<R, ValidKey, N> | null {
+  const state: TraversalState<R, ValidKey, N> = {
+    root,
+    descent: [],
+  };
+  const result = extendNodeSearch(state, predicate, strategy);
+  return result ? new DescentResult(result, strategy) : null;
+}
+
+/**
+ * Helper function for finding a matching node from a given position.
+ */
+export function extendNodeSearch<R, N>(
+  state: TraversalState<R, ValidKey, N>,
+  predicate: FindNodeCallback<R, ValidKey, N>,
+  strategy: NodeStrategy<R, ValidKey, N> = new NodeStrategy(),
+): TraversalState<R, ValidKey, N> | null {
+  const depth = state.descent.length;
+  const source = depth
+    ? state.descent[depth - 1].value
+    : state.root;
+  if(source) {
+    let matched = false;
+    strategy.forEach(
+      source,
+      (value, key) => {
+        state.descent.push({
+          key,
+          value,
+        });
+        const step = {
+          depth,
+          source,
+          key,
+          value,
+        };
+        const result = predicate(step, state);
+        if(result) {
+          matched = true;
+          return false;
+        }
+        if(result !== false) {
+          const childResult = extendNodeSearch(
+            state,
+            predicate,
+            strategy,
+          );
+          if(childResult) {
+            matched = true;
+            return false;
+          }
+        }
+        state.descent.pop();
+      },
+      true,
+    );
+    if(matched) {
+      return state;
+    }
+  }
+  return null;
+}
+
 /**
  * Returns the value and steps taken trying to retrive a value by it's path.
  */
@@ -361,6 +449,36 @@ export class DescentResult<R, K extends ValidKey = ValidKey, N = R> {
       this.strategy,
     );
     return new DescentResult(substate, this.strategy);
+  }
+
+  findNode(
+    predicate: FindNodeCallback<R, ValidKey, N>
+  ): DescentResult<R, ValidKey, N> | null {
+    const result = extendNodeSearch(
+      cloneTraversal(this.state),
+      predicate,
+      this.strategy,
+    );
+    return result ? new DescentResult(result, this.strategy) : null;
+  }
+
+  traverseContents(
+    options: Partial<TraversalOptions<R, ValidKey, N>>,
+  ): void {
+    const baseValue = this.value;
+    if(baseValue) {
+      const state = cloneTraversal(this.state);
+      const strategy = this.strategy || new NodeStrategy<R, K, N>();
+      strategy.forEach(
+        baseValue,
+        (value, key) => extendTraversal(
+          state,
+          { key, value },
+          options,
+          strategy,
+        ),
+      );
+    }
   }
 
   static clone<R, K extends ValidKey, N>(
@@ -514,10 +632,20 @@ export class WrappedArrayStrategy<R, N = R> extends
   forEach(
     source: R | N,
     callback: ForEachCallback<R | N, number, N>,
+    allowBreak = false,
   ): void {
     const children = this.getChildren(source);
-    children.forEach(
-      (child, index) => callback(child, index, source)
-    );
+    if(allowBreak) {
+      for(let i = 0; i < children.length; i++) {
+        const result = callback(children[i], i, source);
+        if(result === false) {
+          break;
+        }
+      }
+    } else {
+      children.forEach(
+        (child, index) => callback(child, index, source)
+      );
+    }
   }
 }

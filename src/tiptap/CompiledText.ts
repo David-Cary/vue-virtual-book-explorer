@@ -57,7 +57,7 @@ export const CompiledText = Node.create<CompiledTextOptions>({
       template: {
         default: '',
       },
-      'refresh-on-update': {
+      refreshOnUpdate: {
         default: false,
       },
     }
@@ -102,7 +102,7 @@ export const CompiledText = Node.create<CompiledTextOptions>({
       updateDom();
 
       const updateCallback = () => {
-        if(node.attrs['refresh-on-update']) {
+        if(node.attrs.refreshOnUpdate) {
           updateDom();
         }
       };

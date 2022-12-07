@@ -10,12 +10,14 @@
     </select>
     <input
       v-if="!linkType"
+      type="text"
       :value="linkURL"
       @change="setURL($event.target.value)"
       placeholder="Link URL"
     />
     <span v-if="linkType === idRouteName">
       <input
+        type="text"
         :value="contentId"
         list="link-editor-content-ids"
         placeholder="content id"

@@ -44,12 +44,12 @@
         >
           <CpuIcon size="1x"/>
         </button>
-        <span>|</span>
-        <TemplatedContentInjector
-          v-if="contextData.templates.keys.length"
-          :editor="editor"
-          :templates="contextData.templates.values"
-        />
+        <button
+          :class="{ 'active-tag-button': selectionNodeTypes['echo'] }"
+          @click="toggleEcho()"
+        >
+          <CastIcon size="1x"/>
+        </button>
       </div>
       <div v-if="selectionNodes.length">
         <select
@@ -68,7 +68,7 @@
         <div v-if="selectedNode.node.type.attrs.id">
           <label class="row-label">Id</label>
           <IdField
-            :usedIds="contextData.contentById.keys"
+            :usedIds="sourceData.contentIds"
             :value="selectedNode.node.attrs.id"
             @change="setNodeAttribute(selectedNode.pos, 'id', $event.value)"
           />
@@ -79,14 +79,6 @@
             type="text"
             :value="selectedNode.node.attrs.class"
             @change="setNodeAttribute(selectedNode.pos, 'class', $event.target.value)"
-          />
-        </div>
-        <div v-if="selectedNode.node.type.attrs.globalName">
-          <label class="row-label">Global Name</label>
-          <IdField
-            :usedIds="contextData.globalContent.keys"
-            :value="selectedNode.node.attrs.globalName"
-            @change="setNodeAttribute(selectedNode.pos, 'globalName', $event.value || undefined)"
           />
         </div>
         <div v-if="selectedNode.node.type.attrs.localName">
@@ -124,21 +116,28 @@
             @change="onHiddenValueChange(selectedNode, $event)"
           />
         </div>
-        <div v-if="selectedNode.node.type.attrs.isTemplate">
-          <input
-            type="checkbox"
-            :checked="selectedNode.node.attrs.isTemplate"
-            @change="toggleIsTemplate(selectedNode)"
-          >
-          <label>Is Template</label>
+        <div v-if="selectedNode.node.type.attrs.sourcePath" class="flex-row">
+          <label class="row-label">Source Path</label>
+          <SourcePathField
+            :sourceData="sourceData"
+            :value="selectedNode.node.attrs.sourcePath"
+            @change="setNodeAttribute(selectedNode.pos, 'sourcePath', $event.value)"
+          />
         </div>
-        <div v-if="selectedNode.node.type.attrs.isTemplateContent">
+        <div v-if="selectedNode.node.type.name === 'echo'" class="flex-row">
+          <button @click="instantiateEchoes()">
+            <CastIcon size="1x"/>
+            <ArrowRightIcon size="1x"/>
+            <CopyIcon size="1x"/>
+          </button>
+        </div>
+        <div v-if="selectedNode.node.type.attrs.echoInTemplate">
           <input
             type="checkbox"
-            :checked="selectedNode.node.attrs.isTemplateContent"
-            @change="toggleIsTemplateContent(selectedNode)"
+            :checked="selectedNode.node.attrs['echoInTemplate']"
+            @change="toggleNodeAttribute(selectedNode, 'echoInTemplate')"
           >
-          <label>Is Template Content</label>
+          <label>Clone as Echo</label>
         </div>
         <TableEditor
           v-if="tableElementSelected"
@@ -171,8 +170,8 @@
           <div>
             <input
               type="checkbox"
-              :checked="selectedNode.node.attrs['refresh-on-update']"
-              @change="toggleNodeAttribute(selectedNode, 'refresh-on-update')"
+              :checked="selectedNode.node.attrs['refreshOnUpdate']"
+              @change="toggleNodeAttribute(selectedNode, 'refreshOnUpdate')"
             >
             <label>Refresh on Update</label>
           </div>
@@ -189,7 +188,7 @@
           </div>
           <LinkEditor
             v-if="selectedMarks['link']"
-            :ids="contextData.contentById.keys"
+            :ids="sourceData.contentIds"
             :editor="editor"
             :position="selectedNode.pos"
           />
@@ -234,15 +233,17 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   CpuIcon,
-  AirplayIcon,
+  CastIcon,
+  ArrowRightIcon,
+  CopyIcon,
 } from 'vue-feather-icons'
 import {
   isEqual,
   clone,
   set,
 } from 'lodash'
-import VirtualBook, {
-  VirtualBookDerivedData,
+import {
+  VirtualBookDataCache,
   RecordWithKeys,
   getRecordWithKeys,
 } from '@/classes/VirtualBook'
@@ -250,11 +251,10 @@ import { Snippet } from '@/tiptap/Snippet'
 import { TextBlock } from '@/tiptap/TextBlock'
 import { TextClass } from '@/tiptap/TextClass'
 import { OuterBlock } from '@/tiptap/OuterBlock'
-import { InlineInstance } from '@/tiptap/InlineInstance'
+import { Echo } from '@/tiptap/Echo'
 import { EnableAttributes } from '@/tiptap/EnableAttributes'
 import { CompiledText, CompileTextProps } from '@/tiptap/CompiledText'
 import { IdentifiedNodes } from '@/tiptap/extensions/IdentifiedNodes'
-import { TemplateNodes } from '@/tiptap/extensions/TemplateNodes'
 import {
   ValueNodes,
   defaultEvaluators,
@@ -268,7 +268,7 @@ import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
 import TableEditor from '@/components/TableEditor.vue'
 import JSValueEditor from '@/components/JSValueEditor.vue'
-import TemplatedContentInjector from '@/components/TemplatedContentInjector.vue'
+import SourcePathField from '@/components/SourcePathField.vue'
 
 @Component ({
   components: {
@@ -279,7 +279,7 @@ import TemplatedContentInjector from '@/components/TemplatedContentInjector.vue'
     LinkEditor,
     TableEditor,
     JSValueEditor,
-    TemplatedContentInjector,
+    SourcePathField,
     TagIcon,
     ListIcon,
     GridIcon,
@@ -289,12 +289,13 @@ import TemplatedContentInjector from '@/components/TemplatedContentInjector.vue'
     ChevronRightIcon,
     ChevronDownIcon,
     CpuIcon,
-    AirplayIcon,
+    CastIcon,
+    ArrowRightIcon,
+    CopyIcon,
   }
 })
 export default class HypertextContentEditor extends Vue {
-  @Prop() context?: VirtualBook;
-  @Prop() cachedContextData?: VirtualBookDerivedData;
+  @Prop() sourceData?: VirtualBookDataCache;
   @Prop() editable?: boolean;
   @Watch('editable', { immediate: true })
   onEditableChange(newValue: boolean): void {
@@ -313,12 +314,6 @@ export default class HypertextContentEditor extends Vue {
   }
 
   @Prop() placeholder?: string;
-
-  get contextData(): VirtualBookDerivedData | null {
-    return this.cachedContextData
-      || this.context?.derivedData
-      || null;
-  }
 
   selectionNodes: NodeWithPos[] = [];
 
@@ -384,27 +379,19 @@ export default class HypertextContentEditor extends Vue {
           'compiledText',
         ],
       }),
-      TemplateNodes.configure({
-        types: [
-          'snippet',
-        ],
-        markerAttribute: {
-          name: 'isTemplate',
-          DOMName: 'data-is-template',
-          dataType: 'boolean'
+      Echo.configure({
+        getTemplate: (path) => {
+          const keys = path.map(value => String(value));
+          return this.sourceData
+            ? this.sourceData.getTemplate(keys)
+            : null;
         },
-        contentTypes: [
+        getContentPath: (source) => source.localValuePath,
+        castableTypes: [
           'snippet',
+          'textBlock',
+          'outerBlock',
         ],
-        contentAttribute: {
-          name: 'isTemplateContent',
-          DOMName: 'data-is-template-content',
-          dataType: 'boolean'
-        },
-      }),
-      InlineInstance.configure({
-        getTemplate: id => this.contextData?.templates?.values[id] || null,
-        contentQuery: '[data-is-template-content]',
       }),
       ValueNodes.configure({
         types: [
@@ -614,6 +601,18 @@ export default class HypertextContentEditor extends Vue {
     }
   }
 
+  toggleEcho(): void {
+    if(this.selectionNodeTypes['echo']) {
+      this.editor.chain().focus().undoEchoes().run();
+    } else {
+      this.editor.chain().focus().insertEcho().run();
+    }
+  }
+
+  instantiateEchoes(): void {
+    this.editor.chain().focus().instantiateEchoes().run();
+  }
+
   onSelectNode(value: string): void {
     const pos = Number(value);
     this.selectedNode = this.selectionNodes.find(ref => ref.pos === pos) || null;
@@ -670,22 +669,6 @@ export default class HypertextContentEditor extends Vue {
       const value = ref.node.attrs[key];
       this.setNodeAttribute(ref.pos, key, !value);
     }
-  }
-
-  toggleIsTemplate(ref: NodeWithPos): void {
-    const value = ref.node.attrs.isTemplate ? undefined : true;
-    this.editor
-      .chain()
-      .setNodeAsTemplate(ref.pos, value)
-      .run();
-  }
-
-  toggleIsTemplateContent(ref: NodeWithPos): void {
-    const value = ref.node.attrs.isTemplateContent ? undefined : true;
-    this.editor
-      .chain()
-      .setTemplateContent(ref.pos, value)
-      .run();
   }
 
   get selectedNodeLocalValues(): RecordWithKeys<NodeWithPos> {

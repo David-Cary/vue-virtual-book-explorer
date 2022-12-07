@@ -1,7 +1,6 @@
 <template>
   <HypertextContentEditor
-    :context="book"
-    :cachedContextData="cachedSourceData"
+    :sourceData="sourceData"
     :content="wrappedContent"
     :editable="editable"
     :placeholder="placeholder"
@@ -13,9 +12,9 @@
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { JSONContent } from '@tiptap/vue-2'
 import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
-import VirtualBook, {
+import {
   VirtualBookContentReference,
-  VirtualBookDerivedData,
+  VirtualBookDataCache,
   VirtualBookContentNode,
 } from '@/classes/VirtualBook'
 import { SetValueRequest } from '@/classes/ObjectEditorEngine'
@@ -28,19 +27,9 @@ import HypertextContentEditor from '@/components/HypertextContentEditor.vue'
 })
 export default class VirtualBookSnippetRenderer extends Vue {
   @Prop() value?: VirtualBookContentReference;
-  @Prop() cachedSourceData?: VirtualBookDerivedData;
+  @Prop() sourceData?: VirtualBookDataCache;
   @Prop() editable?: boolean;
   @Prop() placeholder?: string;
-
-  get book(): VirtualBook | null {
-    return this.value?.book || null;
-  }
-
-  get sourceData(): VirtualBookDerivedData | null {
-    return this.cachedSourceData
-      || this.book?.derivedData
-      || null;
-  }
 
   get contentNode(): VirtualBookContentNode | null {
     return this.value?.node?.value || null;
