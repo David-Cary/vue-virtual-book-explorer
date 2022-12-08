@@ -878,7 +878,6 @@ export class VirtualBookContentDataCache {
       },
     )
     VirtualBookContentDataCache.initTemplate(result, basePath);
-    console.log(result)
     return result;
   }
 

@@ -39,6 +39,12 @@
           <CreditCardIcon size="1x"/>
         </button>
         <button
+          :class="{ 'active-tag-button': selectionNodeTypes['svg'] }"
+          @click="toggleSVG()"
+        >
+          <PenToolIcon size="1x"/>
+        </button>
+        <button
           :class="{ 'active-tag-button': selectionNodeTypes['compiledText'] }"
           @click="toggleCompiledText()"
         >
@@ -144,6 +150,12 @@
           :editor="editor"
           :nodeType="selectedNode.node.type.name"
         />
+        <SVGEditor
+          v-if="selectedNode.node.type.name === 'svg'"
+          :editor="editor"
+          :position="selectedNode.pos"
+          :target="selectedNode.node"
+        />
         <div v-if="listSelected">
           <label class="row-label">Type</label>
           <select
@@ -236,6 +248,7 @@ import {
   CastIcon,
   ArrowRightIcon,
   CopyIcon,
+  PenToolIcon,
 } from 'vue-feather-icons'
 import {
   isEqual,
@@ -254,6 +267,7 @@ import { OuterBlock } from '@/tiptap/OuterBlock'
 import { Echo } from '@/tiptap/Echo'
 import { EnableAttributes } from '@/tiptap/EnableAttributes'
 import { CompiledText, CompileTextProps } from '@/tiptap/CompiledText'
+import { SVG } from '@/tiptap/SVG'
 import { IdentifiedNodes } from '@/tiptap/extensions/IdentifiedNodes'
 import {
   ValueNodes,
@@ -269,6 +283,7 @@ import LinkEditor from '@/components/LinkEditor.vue'
 import TableEditor from '@/components/TableEditor.vue'
 import JSValueEditor from '@/components/JSValueEditor.vue'
 import SourcePathField from '@/components/SourcePathField.vue'
+import SVGEditor from '@/components/SVGEditor.vue'
 
 @Component ({
   components: {
@@ -280,6 +295,7 @@ import SourcePathField from '@/components/SourcePathField.vue'
     TableEditor,
     JSValueEditor,
     SourcePathField,
+    SVGEditor,
     TagIcon,
     ListIcon,
     GridIcon,
@@ -292,6 +308,7 @@ import SourcePathField from '@/components/SourcePathField.vue'
     CastIcon,
     ArrowRightIcon,
     CopyIcon,
+    PenToolIcon,
   }
 })
 export default class HypertextContentEditor extends Vue {
@@ -377,6 +394,7 @@ export default class HypertextContentEditor extends Vue {
           'textBlock',
           'snippet',
           'compiledText',
+          'svg',
         ],
       }),
       Echo.configure({
@@ -420,6 +438,7 @@ export default class HypertextContentEditor extends Vue {
           return parse(props.context);
         }
       }),
+      SVG,
     ],
     onUpdate: () => {
       const doc = this.editor.getJSON();
@@ -599,6 +618,16 @@ export default class HypertextContentEditor extends Vue {
     } else {
       this.setNodeAttribute(ref.pos, 'hiddenValue', event.value);
     }
+  }
+
+  toggleSVG(): void {
+    this.editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: 'svg',
+      })
+      .run();
   }
 
   toggleEcho(): void {
