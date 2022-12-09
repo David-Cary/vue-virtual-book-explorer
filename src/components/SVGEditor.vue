@@ -1,8 +1,16 @@
 <template>
   <div>
     <div v-if="target">
+      <div>
+        <label class="row-label">Label</label>
+        <input
+          type="string"
+          :value="target.attrs['aria-label']"
+          @change="editor.commands.setARIALabel($event.target.value, position)"
+        >
+      </div>
       <span>
-        <label class="row-label">width</label>
+        <label class="row-label">Width</label>
         <input
           type="string"
           :value="target.attrs.width"
@@ -10,7 +18,7 @@
         >
       </span>
       <span>
-        <label class="row-label">height</label>
+        <label class="row-label">Height</label>
         <input
           type="string"
           :value="target.attrs.height"

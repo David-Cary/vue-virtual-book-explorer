@@ -49,6 +49,13 @@ declare module '@tiptap/core' {
         changes: Partial<Rectangle>,
         pos?: number,
       ) => ReturnType,
+      /**
+       * Sets the Accessible Rich Internet Applications label for nodes.
+       */
+      setARIALabel: (
+        value: string,
+        pos?: number,
+      ) => ReturnType,
     }
   }
 }
@@ -98,6 +105,9 @@ export const SVG = Node.create<SVGOptions>({
         default: undefined,
       },
       preserveAspectRatio: {
+        default: undefined,
+      },
+      'aria-label': {
         default: undefined,
       },
     }
@@ -227,6 +237,23 @@ export const SVG = Node.create<SVGOptions>({
             from,
             to,
             (node, pos) => commands.setDimensions(changes, pos)
+          );
+        }
+        return true;
+      },
+      setARIALabel: (
+        value: string,
+        pos?: number,
+      ) => ({ tr, commands }: CommandProps) => {
+        if(pos !== undefined) {
+          tr.setNodeAttribute(pos, 'aria-label', value);
+        } else {
+          const { selection } = tr;
+          const { from, to } = selection;
+          tr.doc.nodesBetween(
+            from,
+            to,
+            (node, pos) => commands.setARIALabel(value, pos)
           );
         }
         return true;
