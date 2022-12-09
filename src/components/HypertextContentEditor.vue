@@ -764,3 +764,20 @@ export default class HypertextContentEditor extends Vue {
 .flex-row
   display flex
 </style>
+<style lang="stylus">
+.ProseMirror[contenteditable=true] table
+  border 1px dotted gray
+.ProseMirror[contenteditable=true] tr
+  border 1px dotted gray
+.ProseMirror[contenteditable=true] td
+  border 1px dotted gray
+.ProseMirror[contenteditable=true] th
+  border 1px dotted gray
+.ProseMirror[contenteditable=true] [data-type=snippet]
+  border 1px dashed gray
+  padding 1px
+.ProseMirror[contenteditable=true] [data-type=compiledText]
+  border 1px dotted gray
+.ProseMirror[contenteditable=true] [data-type=echo]
+  border 1px dotted gray
+</style>
