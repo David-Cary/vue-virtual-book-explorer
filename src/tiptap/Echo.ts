@@ -10,14 +10,16 @@ import {
 } from 'prosemirror-model'
 import { createAttribute } from '@/tiptap/helpers/createAttribute'
 
+export type CommonKey = string | number;
+
 export interface EchoOptions {
   HTMLAttributes: Record<string, unknown>,
   getTemplate: (
-    path: (string | number)[]
+    path: CommonKey[]
   ) => JSONContent | string | undefined | null,
   placeholder: string,
   castableTypes: string[],
-  getContentPath: (source: JSONContent) => (string | number)[] | undefined,
+  getContentPath: (source: JSONContent) => CommonKey[] | undefined,
 }
 
 declare module '@tiptap/core' {
@@ -35,6 +37,20 @@ declare module '@tiptap/core' {
        * Replaces all echo nodes in the selection with a copy of their source.
        */
       instantiateEchoes: () => ReturnType,
+      /**
+       * Sets the source path of an echo.
+       */
+      setEchoPath: (
+        value: CommonKey[],
+        pos?: number,
+      ) => ReturnType,
+      /**
+       * Sets the source path of an echo.
+       */
+      setEchoInTemplate: (
+        value: boolean | undefined,
+        pos?: number,
+      ) => ReturnType,
     }
   }
 }
@@ -168,6 +184,40 @@ export const Echo = Node.create<EchoOptions>({
             }
           }
         });
+        return true;
+      },
+      setEchoPath: (
+        value: CommonKey[],
+        pos?: number,
+      ) => ({ tr, commands }) => {
+        if(pos !== undefined) {
+          tr.setNodeAttribute(pos, 'sourcePath', value);
+        } else {
+          const { selection } = tr;
+          const { from, to } = selection;
+          tr.doc.nodesBetween(
+            from,
+            to,
+            (node, pos) => commands.setEchoPath(value, pos)
+          );
+        }
+        return true;
+      },
+      setEchoInTemplate: (
+        value: boolean | undefined,
+        pos?: number,
+      ) => ({ tr, commands }) => {
+        if(pos !== undefined) {
+          tr.setNodeAttribute(pos, 'echoInTemplate', value);
+        } else {
+          const { selection } = tr;
+          const { from, to } = selection;
+          tr.doc.nodesBetween(
+            from,
+            to,
+            (node, pos) => commands.setEchoInTemplate(value, pos)
+          );
+        }
         return true;
       },
     }

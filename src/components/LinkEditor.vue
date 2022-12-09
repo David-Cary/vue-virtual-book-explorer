@@ -68,19 +68,11 @@ export default class LinkEditor extends Vue {
 
   setURL(value: string): void {
     if(this.editor) {
-      if(this.position === undefined) {
-        this.editor
-          .chain()
-          .focus()
-          .setLink({ href: value })
-          .run();
-      } else {
-        this.editor
-          .chain()
-          .focus()
-          .setMarkAttribute(this.position, 'link', 'href', value)
-          .run();
-      }
+      this.editor
+        .chain()
+        .focus()
+        .setLink({ href: value })
+        .run();
     }
   }
 
@@ -155,20 +147,12 @@ export default class LinkEditor extends Vue {
 
   setTarget(value: string): void {
     if(this.editor) {
-      if(this.position === undefined) {
-        const previousUrl = this.editor.getAttributes('link').href;
-        this.editor
-          .chain()
-          .focus()
-          .setLink({ href: previousUrl, target: value })
-          .run();
-      } else {
-        this.editor
-          .chain()
-          .focus()
-          .setMarkAttribute(this.position, 'link', 'target', value)
-          .run();
-      }
+      const previousUrl = this.editor.getAttributes('link').href;
+      this.editor
+        .chain()
+        .focus()
+        .setLink({ href: previousUrl, target: value })
+        .run();
     }
   }
 }

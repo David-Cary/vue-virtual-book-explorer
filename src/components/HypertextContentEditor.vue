@@ -76,7 +76,7 @@
           <IdField
             :usedIds="sourceData.contentIds"
             :value="selectedNode.node.attrs.id"
-            @change="setNodeAttribute(selectedNode.pos, 'id', $event.value)"
+            @change="editor.commands.setNodeId(selectedNode.pos, $event.value)"
           />
         </div>
         <div v-if="selectedNode.node.type.attrs.class">
@@ -84,7 +84,7 @@
           <input
             type="text"
             :value="selectedNode.node.attrs.class"
-            @change="setNodeAttribute(selectedNode.pos, 'class', $event.target.value)"
+            @change="editor.commands.setNodeClass(selectedNode.pos, $event.target.value)"
           />
         </div>
         <div v-if="selectedNode.node.type.attrs.localName">
@@ -92,7 +92,7 @@
           <IdField
             :usedIds="selectedNodeLocalValues.keys"
             :value="selectedNode.node.attrs.localName"
-            @change="setNodeAttribute(selectedNode.pos, 'localName', $event.value || undefined)"
+            @change="editor.commands.setValueNode({localName: $event.value || undefined}, selectedNode.pos)"
           />
         </div>
         <div v-if="selectedNode.node.type.attrs.evaluateAs">
@@ -106,7 +106,7 @@
             as
             <select
               :value="selectedNode.node.attrs.evaluateAs"
-              @change="setNodeAttribute(selectedNode.pos, 'evaluateAs', $event.target.value)"
+              @change="editor.commands.setValueNode({evaluateAs: $event.target.value}, selectedNode.pos)"
             >
               <option
                 v-for="key in evaluatorKeys"
@@ -127,7 +127,7 @@
           <SourcePathField
             :sourceData="sourceData"
             :value="selectedNode.node.attrs.sourcePath"
-            @change="setNodeAttribute(selectedNode.pos, 'sourcePath', $event.value)"
+            @change="editor.commands.setEchoPath($event.value, selectedNode.pos)"
           />
         </div>
         <div v-if="selectedNode.node.type.name === 'echo'" class="flex-row">
@@ -141,7 +141,7 @@
           <input
             type="checkbox"
             :checked="selectedNode.node.attrs['echoInTemplate']"
-            @change="toggleNodeAttribute(selectedNode, 'echoInTemplate')"
+            @change="toggleEchoInTemplate(selectedNode)"
           >
           <label>Clone as Echo</label>
         </div>
@@ -176,14 +176,14 @@
               type="text"
               placeholder="expression"
               :value="selectedNode.node.attrs.template"
-              @change="setNodeAttribute(selectedNode.pos, 'template', $event.target.value)"
+              @change="editor.commands.setCompiledText({template: $event.target.value}, selectedNode.pos)"
             >
           </div>
           <div>
             <input
               type="checkbox"
               :checked="selectedNode.node.attrs['refreshOnUpdate']"
-              @change="toggleNodeAttribute(selectedNode, 'refreshOnUpdate')"
+              @change="toggleRefreshOnUpdate(selectedNode)"
             >
             <label>Refresh on Update</label>
           </div>
@@ -265,10 +265,10 @@ import { TextBlock } from '@/tiptap/TextBlock'
 import { TextClass } from '@/tiptap/TextClass'
 import { OuterBlock } from '@/tiptap/OuterBlock'
 import { Echo } from '@/tiptap/Echo'
-import { EnableAttributes } from '@/tiptap/EnableAttributes'
 import { CompiledText, CompileTextProps } from '@/tiptap/CompiledText'
 import { SVG } from '@/tiptap/SVG'
 import { IdentifiedNodes } from '@/tiptap/extensions/IdentifiedNodes'
+import { ClassedNodes } from '@/tiptap/extensions/ClassedNodes'
 import {
   ValueNodes,
   defaultEvaluators,
@@ -355,35 +355,6 @@ export default class HypertextContentEditor extends Vue {
       TableRow,
       TableHeader,
       TableCell,
-      EnableAttributes.configure({
-        enable: [
-          {
-            types: [
-              'paragraph',
-              'bulletList',
-              'orderedList',
-              'table',
-              'outerBlock',
-              'textBlock',
-              'compiledText',
-            ],
-            attributes: [
-              'id',
-              'class',
-            ],
-          },
-          {
-            types: [
-              'tableRow',
-              'tableCell',
-              'tableHeader',
-            ],
-            attributes: [
-              'class',
-            ],
-          }
-        ],
-      }),
       IdentifiedNodes.configure({
         types: [
           'paragraph',
@@ -396,6 +367,20 @@ export default class HypertextContentEditor extends Vue {
           'compiledText',
           'svg',
         ],
+      }),
+      ClassedNodes.configure({
+        types: [
+          'paragraph',
+          'bulletList',
+          'orderedList',
+          'table',
+          'tableRow',
+          'tableCell',
+          'tableHeader',
+          'outerBlock',
+          'textBlock',
+          'compiledText',
+        ]
       }),
       Echo.configure({
         getTemplate: (path) => {
@@ -603,20 +588,59 @@ export default class HypertextContentEditor extends Vue {
   }
 
   toggleEvaluated(ref: NodeWithPos): void {
-    const newValue = ref.node.attrs.evaluateAs ? undefined : 'text';
-    this.setNodeAttribute(ref.pos, 'evaluateAs', newValue);
+    if(this.editor) {
+      const newValue = ref.node.attrs.evaluateAs ? undefined : 'text';
+      this.editor
+        .chain()
+        .focus()
+        .setValueNode(
+          {
+            evaluateAs: newValue,
+          },
+          ref.pos,
+        )
+        .run();
+    }
   }
 
   onHiddenValueChange(
     ref: NodeWithPos,
     event: ValueChangeDescription<unknown>
   ): void {
-    if(event.path) {
-      const value = clone(ref.node.attrs.hiddenValue);
-      set(value, event.path, event.value);
-      this.setNodeAttribute(ref.pos, 'hiddenValue', value);
-    } else {
-      this.setNodeAttribute(ref.pos, 'hiddenValue', event.value);
+    if(this.editor) {
+      let hiddenValue = event.value;
+      if(event.path) {
+        hiddenValue = clone(ref.node.attrs.hiddenValue);
+        if(typeof hiddenValue === 'object' && hiddenValue) {
+          set(hiddenValue, event.path, event.value);
+        }
+      }
+      this.editor
+        .chain()
+        .focus()
+        .setValueNode(
+          {
+            hiddenValue,
+          },
+          ref.pos,
+        )
+        .run();
+    }
+  }
+
+  toggleRefreshOnUpdate(ref: NodeWithPos): void {
+    if(this.editor) {
+      const newValue = ref.node.attrs.evaluateAs ? undefined : true;
+      this.editor
+        .chain()
+        .focus()
+        .setCompiledText(
+          {
+            refreshOnUpdate: newValue,
+          },
+          ref.pos,
+        )
+        .run();
     }
   }
 
@@ -635,6 +659,20 @@ export default class HypertextContentEditor extends Vue {
       this.editor.chain().focus().undoEchoes().run();
     } else {
       this.editor.chain().focus().insertEcho().run();
+    }
+  }
+
+  toggleEchoInTemplate(ref: NodeWithPos): void {
+    if(this.editor) {
+      const newValue = ref.node.attrs.evaluateAs ? undefined : true;
+      this.editor
+        .chain()
+        .focus()
+        .setEchoInTemplate(
+          newValue,
+          ref.pos,
+        )
+        .run();
     }
   }
 
@@ -671,33 +709,6 @@ export default class HypertextContentEditor extends Vue {
       }
     }
     return markMap;
-  }
-
-  setMarkAttribute(
-    pos: number,
-    markName: string,
-    key: string,
-    value: unknown
-  ): void {
-    this.editor
-      .chain()
-      .focus()
-      .setMarkAttribute(pos, markName, key, value)
-      .run();
-  }
-
-  setNodeAttribute(pos: number, key: string, value: unknown): void {
-    this.editor
-      .chain()
-      .setNodeAttribute(pos, key, value)
-      .run();
-  }
-
-  toggleNodeAttribute(ref: NodeWithPos, key: string): void {
-    if(ref.node?.attrs) {
-      const value = ref.node.attrs[key];
-      this.setNodeAttribute(ref.pos, key, !value);
-    }
   }
 
   get selectedNodeLocalValues(): RecordWithKeys<NodeWithPos> {

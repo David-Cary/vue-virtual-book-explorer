@@ -1,20 +1,20 @@
 import { Extension } from '@tiptap/core'
 
-export interface IdentifiedNodesOptions {
+export interface ClassedNodesOptions {
   types: string[];
 }
 
 export interface IdentifiedNodeAttributes {
-  id: string;
+  class: string;
 }
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
-    identifiedNodes: {
+    classedNodes: {
       /**
        * Enforces use of value node attributes.
        */
-      setNodeId: (
+      setNodeClass: (
         pos: number,
         value: string,
       ) => ReturnType,
@@ -22,8 +22,8 @@ declare module '@tiptap/core' {
   }
 }
 
-export const IdentifiedNodes = Extension.create<IdentifiedNodesOptions>({
-  name: 'identifiedNodes',
+export const ClassedNodes = Extension.create<ClassedNodesOptions>({
+  name: 'classedNodes',
 
   addOptions() {
     return {
@@ -36,13 +36,13 @@ export const IdentifiedNodes = Extension.create<IdentifiedNodesOptions>({
       {
         types: this.options.types,
         attributes: {
-          id: {
+          class: {
             default: undefined,
-            parseHTML: element => element.getAttribute('id'),
+            parseHTML: element => element.getAttribute('class'),
             renderHTML: attributes => {
               const results: Record<string, string> = {};
-              if(attributes.id !== undefined) {
-                results.id = attributes.id;
+              if(attributes.class !== undefined) {
+                results.class = attributes.class;
               }
               return results;
             },
@@ -54,13 +54,13 @@ export const IdentifiedNodes = Extension.create<IdentifiedNodesOptions>({
 
   addCommands() {
     return {
-      setNodeId: (
+      setNodeClass: (
         pos: number,
         value: string,
       ) => ({ tr }) => {
-        tr.setNodeAttribute(pos, 'id', value);
+        tr.setNodeAttribute(pos, 'class', value);
         const node = tr.doc.nodeAt(pos);
-        return node ? node.attrs.id === value : false;
+        return node ? node.attrs.class === value : false;
       },
     };
   },

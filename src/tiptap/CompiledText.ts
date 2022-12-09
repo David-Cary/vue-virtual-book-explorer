@@ -15,6 +15,11 @@ export interface CompiledTextOptions {
   compileText: (props: CompileTextProps) => string,
 }
 
+export interface CompiledTextAttributes {
+  template: string;
+  refreshOnUpdate: boolean;
+}
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     compiledText: {
@@ -26,6 +31,13 @@ declare module '@tiptap/core' {
        * Removes compiled text and replaces it with it's template.
        */
       unwrapCompiledText: () => ReturnType,
+      /**
+       * Sets the attributes of a compiled text node or nodes.
+       */
+      setCompiledText: (
+        attributes: Partial<CompiledTextAttributes>,
+        pos?: number,
+      ) => ReturnType,
     }
   }
 }
@@ -143,6 +155,30 @@ export const CompiledText = Node.create<CompiledTextOptions>({
             commands.insertContentAt(pos, text);
           }
         });
+        return true;
+      },
+      setCompiledText: (
+        attributes: Partial<CompiledTextAttributes>,
+        pos?: number,
+      ) => ({ tr, commands }) => {
+        if(pos !== undefined) {
+          const node = tr.doc.nodeAt(pos);
+          if(node) {
+            const updatedAttributes = mergeAttributes(
+              node.attrs,
+              attributes,
+            );
+            tr.setNodeMarkup(pos, null, updatedAttributes);
+          }
+        } else {
+          const { selection } = tr;
+          const { from, to } = selection;
+          tr.doc.nodesBetween(
+            from,
+            to,
+            (node, pos) => commands.setCompiledText(attributes, pos)
+          );
+        }
         return true;
       },
     }
