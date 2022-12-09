@@ -423,6 +423,7 @@ export default class HypertextContentEditor extends Vue {
       }),
       SVG,
     ],
+    enableInputRules: false,
     onUpdate: () => {
       const doc = this.editor.getJSON();
       this.$emit('change', {
