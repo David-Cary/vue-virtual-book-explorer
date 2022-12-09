@@ -47,7 +47,7 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 import { Route } from 'vue-router'
 import { Editor } from '@tiptap/vue-2'
 import { get } from 'lodash'
-import { StandardVirtualBookRoutes } from '@/classes/VirtualBook'
+import { StandardVirtualBookRoutes } from '@/ts/data/VirtualBook'
 
 @Component
 export default class LinkEditor extends Vue {

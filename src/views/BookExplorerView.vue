@@ -11,8 +11,8 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 import VirtualBookExplorer from '@/components/VirtualBookExplorer.vue'
 import VirtualBook, {
   VirtualBookContentSearchOptions,
-} from '@/classes/VirtualBook'
-import { OperationRequest } from '@/classes/OperationEngine'
+} from '@/ts/data/VirtualBook'
+import { OperationRequest } from '@/ts/data/OperationEngine'
 
 @Component({
   components: {

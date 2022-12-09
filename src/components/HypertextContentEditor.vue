@@ -257,7 +257,7 @@ import {
   VirtualBookDataCache,
   RecordWithKeys,
   getRecordWithKeys,
-} from '@/classes/VirtualBook'
+} from '@/ts/data/VirtualBook'
 import { Snippet } from '@/tiptap/Snippet'
 import { TextBlock } from '@/tiptap/TextBlock'
 import { TextClass } from '@/tiptap/TextClass'
@@ -275,7 +275,7 @@ import {
   getLocalValuesAt,
 } from '@/tiptap/extensions/ValueNodes'
 import { template, groupBy } from 'lodash'
-import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
+import ValueChangeDescription from '@/ts/data/ValueChangeDescription'
 import IdField from '@/components/IdField.vue'
 import LinkEditor from '@/components/LinkEditor.vue'
 import TableEditor from '@/components/TableEditor.vue'

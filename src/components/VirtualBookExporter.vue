@@ -13,7 +13,7 @@
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { EyeIcon, DownloadIcon } from 'vue-feather-icons'
 import FileSaver from 'file-saver'
-import VirtualBook from '@/classes/VirtualBook'
+import VirtualBook from '@/ts/data/VirtualBook'
 
 @Component({
   components: {

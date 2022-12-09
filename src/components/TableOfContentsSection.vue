@@ -34,7 +34,7 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 import { ChevronRightIcon, ChevronDownIcon } from 'vue-feather-icons'
 import VirtualBook, {
   VirtualBookContentReference
-} from '@/classes/VirtualBook'
+} from '@/ts/data/VirtualBook'
 import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
 
 @Component ({

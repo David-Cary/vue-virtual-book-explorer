@@ -40,9 +40,9 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { PlusIcon, MinusIcon } from 'vue-feather-icons'
-import { StyleRuleMap, StringMap } from '@/classes/VirtualBook'
+import { StyleRuleMap, StringMap } from '@/ts/data/VirtualBook'
 import { CommonKey } from '@/ts/utilities/TraversalState'
-import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
+import ValueChangeDescription from '@/ts/data/ValueChangeDescription'
 import StyleRuleDeclarationEditor from '@/components/StyleRuleDeclarationEditor.vue'
 
 @Component ({

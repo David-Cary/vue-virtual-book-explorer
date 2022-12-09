@@ -8,7 +8,7 @@ import { RouteRecordPublic } from 'vue-router'
 import {
   VirtualBookContentReference,
   CreateHRef,
-} from '@/classes/VirtualBook'
+} from '@/ts/data/VirtualBook'
 
 @Component
 export default class VirtualBookContentLink extends Vue {

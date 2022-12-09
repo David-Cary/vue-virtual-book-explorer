@@ -31,7 +31,7 @@
 
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import VirtualBook from '@/classes/VirtualBook'
+import VirtualBook from '@/ts/data/VirtualBook'
 import TableOfContentsSection from '@/components/TableOfContentsSection.vue'
 import VirtualBookSectionInjector from '@/components/VirtualBookSectionInjector.vue'
 

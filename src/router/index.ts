@@ -1,7 +1,7 @@
 import Vue from 'vue'
 import VueRouter, { RouteConfig } from 'vue-router'
 import BookExplorerView from '../views/BookExplorerView.vue'
-import { StandardVirtualBookRoutes } from '@/classes/VirtualBook'
+import { StandardVirtualBookRoutes } from '@/ts/data/VirtualBook'
 import VueRouteLinker from '@/ts/vue/VueRouteLinker'
 
 Vue.use(VueRouter)

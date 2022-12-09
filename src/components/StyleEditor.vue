@@ -36,7 +36,7 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { PlusIcon } from 'vue-feather-icons'
-import { StyleRuleMap } from '@/classes/VirtualBook'
+import { StyleRuleMap } from '@/ts/data/VirtualBook'
 import StyleRuleEditor from '@/components/StyleRuleEditor.vue'
 
 @Component ({

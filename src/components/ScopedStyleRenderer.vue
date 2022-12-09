@@ -1,7 +1,7 @@
 <script lang="ts">
 import { VNode } from 'vue'
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { StyleRuleMap } from '@/classes/VirtualBook'
+import { StyleRuleMap } from '@/ts/data/VirtualBook'
 
 @Component
 export default class ScopedStyleRenderer extends Vue {

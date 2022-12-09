@@ -21,7 +21,7 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { MinusIcon } from 'vue-feather-icons'
-import { StringMap } from '@/classes/VirtualBook'
+import { StringMap } from '@/ts/data/VirtualBook'
 
 @Component ({
   components: {

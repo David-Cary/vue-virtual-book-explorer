@@ -19,9 +19,9 @@ import { FolderMinusIcon, CopyIcon, ScissorsIcon } from 'vue-feather-icons'
 import {
   VirtualBookSection,
   VirtualBookContentReference,
-} from '@/classes/VirtualBook'
+} from '@/ts/data/VirtualBook'
 import { CommonKey } from '@/ts/utilities/TraversalState'
-import { DeleteValueRequest } from '@/classes/ObjectEditorEngine'
+import { DeleteValueRequest } from '@/ts/data/ObjectEditorEngine'
 
 @Component ({
   components: {

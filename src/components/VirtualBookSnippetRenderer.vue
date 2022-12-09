@@ -11,13 +11,13 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { JSONContent } from '@tiptap/vue-2'
-import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
+import ValueChangeDescription from '@/ts/data/ValueChangeDescription'
 import {
   VirtualBookContentReference,
   VirtualBookDataCache,
   VirtualBookContentNode,
-} from '@/classes/VirtualBook'
-import { SetValueRequest } from '@/classes/ObjectEditorEngine'
+} from '@/ts/data/VirtualBook'
+import { SetValueRequest } from '@/ts/data/ObjectEditorEngine'
 import HypertextContentEditor from '@/components/HypertextContentEditor.vue'
 
 @Component ({

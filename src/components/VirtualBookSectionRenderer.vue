@@ -99,10 +99,10 @@ import {
   VirtualBookContentReference,
   VirtualBookSection,
   VirtualBookDataCache,
-} from '@/classes/VirtualBook'
+} from '@/ts/data/VirtualBook'
 import { CommonKey } from '@/ts/utilities/TraversalState'
-import { SetValueRequest } from '@/classes/ObjectEditorEngine'
-import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
+import { SetValueRequest } from '@/ts/data/ObjectEditorEngine'
+import ValueChangeDescription from '@/ts/data/ValueChangeDescription'
 import IdField from '@/components/IdField.vue'
 import TextRenderer from '@/components/TextRenderer.vue'
 import HypertextContentEditor from '@/components/HypertextContentEditor.vue'

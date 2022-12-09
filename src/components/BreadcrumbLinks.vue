@@ -23,7 +23,7 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { ChevronRightIcon } from 'vue-feather-icons'
-import { VirtualBookContentReference } from '@/classes/VirtualBook'
+import { VirtualBookContentReference } from '@/ts/data/VirtualBook'
 import VirtualBookContentLink from '@/components/VirtualBookContentLink.vue'
 
 @Component ({

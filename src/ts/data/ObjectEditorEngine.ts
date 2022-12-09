@@ -1,5 +1,5 @@
-import OperationEngine, { OperationRequest, OperationHandler } from '@/classes/OperationEngine'
-import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
+import OperationEngine, { OperationRequest, OperationHandler } from '@/ts/data/OperationEngine'
+import ValueChangeDescription from '@/ts/data/ValueChangeDescription'
 
 export type PathStep = (string | number);
 

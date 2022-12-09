@@ -3,8 +3,8 @@ import ObjectEditorEngine, {
   SetValueRequest,
   ValueMap,
   PathStep,
-} from "@/classes/ObjectEditorEngine"
-import { OperationHandler } from '@/classes/OperationEngine'
+} from "@/ts/data/ObjectEditorEngine"
+import { OperationHandler } from '@/ts/data/OperationEngine'
 
 export default class VueObjectEditorEngine extends ObjectEditorEngine {
   constructor() {

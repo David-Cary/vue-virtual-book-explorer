@@ -44,7 +44,7 @@
 
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { VirtualBookDataCache } from '@/classes/VirtualBook'
+import { VirtualBookDataCache } from '@/ts/data/VirtualBook'
 
 @Component
 export default class SourcePathField extends Vue {

@@ -70,7 +70,7 @@ import {
   MinusSquareIcon,
 } from 'vue-feather-icons'
 import { clone, cloneDeep } from 'lodash'
-import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
+import ValueChangeDescription from '@/ts/data/ValueChangeDescription'
 
 interface DataType {
   defaultValue?: unknown;

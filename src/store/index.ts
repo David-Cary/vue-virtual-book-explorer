@@ -1,8 +1,8 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 import VuexPersistence from 'vuex-persist'
-import VirtualBook from '@/classes/VirtualBook'
-import VueObjectEditorEngine from '@/classes/VueObjectEditorEngine'
+import VirtualBook from '@/ts/data/VirtualBook'
+import VueObjectEditorEngine from '@/ts/vue/VueObjectEditorEngine'
 
 Vue.use(Vuex)
 

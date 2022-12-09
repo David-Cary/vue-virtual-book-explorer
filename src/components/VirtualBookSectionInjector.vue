@@ -20,8 +20,8 @@ import { FolderPlusIcon, ClipboardIcon, PlusIcon } from 'vue-feather-icons'
 import VirtualBook, {
   VirtualBookSection,
   VirtualBookContentReference,
-} from '@/classes/VirtualBook'
-import { InsertValueRequest, DeleteValueRequest } from '@/classes/ObjectEditorEngine'
+} from '@/ts/data/VirtualBook'
+import { InsertValueRequest, DeleteValueRequest } from '@/ts/data/ObjectEditorEngine'
 import { CommonKey } from '@/ts/utilities/TraversalState';
 
 @Component ({

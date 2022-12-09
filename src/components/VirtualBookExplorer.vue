@@ -139,10 +139,10 @@ import VirtualBook, {
   VirtualBookContentReference,
   VirtualBookDataCache,
   VirtualBookContentNode,
-} from '@/classes/VirtualBook'
+} from '@/ts/data/VirtualBook'
 import { CommonKey } from '@/ts/utilities/TraversalState'
-import ValueChangeDescription from '@/interfaces/ValueChangeDescription'
-import { SetValueRequest } from '@/classes/ObjectEditorEngine'
+import ValueChangeDescription from '@/ts/data/ValueChangeDescription'
+import { SetValueRequest } from '@/ts/data/ObjectEditorEngine'
 import VirtualBookSectionRenderer from '@/components/VirtualBookSectionRenderer.vue'
 import VirtualBookSnippetRenderer from '@/components/VirtualBookSnippetRenderer.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
