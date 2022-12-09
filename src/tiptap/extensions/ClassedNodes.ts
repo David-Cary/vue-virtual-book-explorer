@@ -38,14 +38,6 @@ export const ClassedNodes = Extension.create<ClassedNodesOptions>({
         attributes: {
           class: {
             default: undefined,
-            parseHTML: element => element.getAttribute('class'),
-            renderHTML: attributes => {
-              const results: Record<string, string> = {};
-              if(attributes.class !== undefined) {
-                results.class = attributes.class;
-              }
-              return results;
-            },
           },
         }
       }

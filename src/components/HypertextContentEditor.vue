@@ -189,22 +189,20 @@
           </div>
         </div>
         <div v-if="selectedNode.node.type.name === 'text'">
-          <div>
-            <label class="row-label">Classes</label>
-            <input
-              type="text"
-              placeholder="text classes"
-              :value="textClasses"
-              @change="setTextClasses($event.target.value)"
-            />
-          </div>
-          <LinkEditor
-            v-if="selectedMarks['link']"
-            :ids="sourceData.contentIds"
-            :editor="editor"
-            :position="selectedNode.pos"
+          <label class="row-label">Classes</label>
+          <input
+            type="text"
+            placeholder="text classes"
+            :value="textClasses"
+            @change="setTextClasses($event.target.value)"
           />
         </div>
+        <LinkEditor
+          v-if="selectedMarks['link']"
+          :ids="sourceData.contentIds"
+          :editor="editor"
+          :position="selectedNode.pos"
+        />
       </div>
     </div>
     <div

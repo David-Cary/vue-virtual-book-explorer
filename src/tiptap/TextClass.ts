@@ -31,7 +31,7 @@ export const TextClass = Mark.create<TextClassOptions>({
   addAttributes() {
     return {
       class: {
-        default: '',
+        default: undefined,
       },
     }
   },
