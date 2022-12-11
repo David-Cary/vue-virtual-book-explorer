@@ -397,7 +397,13 @@ export default class HypertextContentEditor extends Vue {
       ValueNodes.configure({
         types: [
           'snippet',
-          'outerBlock'
+          'outerBlock',
+          'textBlock',
+          'paragraph',
+          'bulletList',
+          'orderedList',
+          'table',
+          'compiledText',
         ]
       }),
       CompiledText.configure({
