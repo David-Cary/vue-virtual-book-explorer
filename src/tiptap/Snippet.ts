@@ -53,7 +53,6 @@ export const Snippet = Node.create<SnippetOptions>({
   group: 'inline',
 
   content: 'inline+',
-  draggable: true,
 
   parseHTML() {
     return [
