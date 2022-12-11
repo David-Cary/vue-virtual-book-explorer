@@ -378,6 +378,7 @@ export default class HypertextContentEditor extends Vue {
           'outerBlock',
           'textBlock',
           'compiledText',
+          'snippet',
         ]
       }),
       Echo.configure({
