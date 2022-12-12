@@ -18,7 +18,7 @@
     </div>
     <div v-if="isOpen">
       <TableOfContentsSection
-        v-for="(section, index) of sectionRef.section.sections"
+        v-for="(section, index) of subsections"
         :key="index"
         class="vbook-table-of-contents-subsections"
         :parentRef="sectionRef"
@@ -61,6 +61,10 @@ export default class TableOfContentsSection extends Vue {
       }
     }
     return null;
+  }
+
+  get subsections(): VirtualBookContentReference[] {
+    return this.sectionRef?.subsections || [];
   }
 }
 </script>
