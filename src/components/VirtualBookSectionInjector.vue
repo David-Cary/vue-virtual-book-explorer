@@ -21,7 +21,7 @@ import VirtualBook, {
   VirtualBookSection,
   VirtualBookContentReference,
 } from '@/ts/data/VirtualBook'
-import { InsertValueRequest, DeleteValueRequest } from '@/ts/data/ObjectEditorEngine'
+import { InsertValueRequest, RelocateValueRequest } from '@/ts/data/ObjectEditorEngine'
 import { CommonKey } from '@/ts/utilities/TraversalState';
 
 @Component ({
@@ -59,14 +59,6 @@ export default class VirtualBookSectionInjector extends Vue {
   }
 
   onPasteSubsection(): void {
-    // Add clipboard content.
-    if(this.copiedSection) {
-      const request = new InsertValueRequest(
-        this.injectionPath,
-        VirtualBookSection.cloneSection(this.copiedSection)
-      );
-      this.$emit('change', request);
-    }
     // Check for if the content should be removed from it's origin.
     if(this.$store.state.clipboard?.remove) {
       const book = this.parentRef?.section.state.root || this.book;
@@ -76,14 +68,20 @@ export default class VirtualBookSectionInjector extends Vue {
           this.copiedSection
         );
         if(removalPath) {
-          this.$emit('change', new DeleteValueRequest(
+          this.$emit('change', new RelocateValueRequest(
             removalPath,
-            this.copiedSection
+            this.injectionPath,
           ));
         }
       }
       // Clear the clipboard.
       this.$store.commit('updateClipboard', null);
+    } else if(this.copiedSection) {
+      const request = new InsertValueRequest(
+        this.injectionPath,
+        VirtualBookSection.cloneSection(this.copiedSection)
+      );
+      this.$emit('change', request);
     }
   }
 }
