@@ -462,7 +462,10 @@ export default class HypertextContentEditor extends Vue {
   getNodeLabel(ref: NodeWithPos): string {
     if(ref.node) {
       if(ref.node.attrs.id) {
-        return ref.node.attrs.id;
+        return `#${ref.node.attrs.id}`;
+      }
+      if(ref.node.attrs.localName) {
+        return `['${ref.node.attrs.localName}']`;
       }
       if(ref.node.type.name === 'text') {
         const text = ref.node.text || '';
@@ -472,7 +475,10 @@ export default class HypertextContentEditor extends Vue {
           : text;
         return `"${trimmed}"`
       }
-      return `(${ref.node.type.name})`;
+      if(ref.node.attrs.class) {
+        return `.${ref.node.attrs.class.replace(' ','.')}`;
+      }
+      return `${ref.node.type.name}`;
     }
     return 'Missing Node!';
   }
