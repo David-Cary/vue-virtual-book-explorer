@@ -230,7 +230,7 @@ import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
-import { Mark } from 'prosemirror-model'
+import { Mark, Node } from 'prosemirror-model'
 import {
   CropIcon,
   LinkIcon,
@@ -419,6 +419,20 @@ export default class HypertextContentEditor extends Vue {
             const node = getNestedValueNode(this.editor.state.doc, path);
             if(node) {
               return getNodeValue(node);
+            }
+            return undefined;
+          },
+          getContentValue: (path: string[]) => {
+            if(this.sourceData && path.length > 1) {
+              const data = this.sourceData.getLocalNode(path);
+              const content = data?.source?.node?.value;
+              if(content) {
+                const node = Node.fromJSON(
+                  this.editor.schema,
+                  content
+                );
+                return getNodeValue(node);
+              }
             }
             return undefined;
           },

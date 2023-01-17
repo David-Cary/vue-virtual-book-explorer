@@ -5,6 +5,8 @@ import {
   WrappedArrayStrategy,
   getNestedValue,
   traverseContents,
+  cloneTraversal,
+  extendTraversal,
   getSibling,
   getLeaf,
 } from '@/ts/utilities/TraversalState';
@@ -487,12 +489,13 @@ export class VirtualBookContentReference {
           return id;
         }
       }
-    }
-    const section = this.section.value;
-    if(section) {
-      const id = VirtualBook.getContentId(section);
-      if(id) {
-        return id;
+    } else {
+      const section = this.section.value;
+      if(section) {
+        const id = VirtualBook.getContentId(section);
+        if(id) {
+          return id;
+        }
       }
     }
     return null;
@@ -525,25 +528,39 @@ export class VirtualBookContentReference {
 
   get localValues(): Record<string, VirtualBookContentReference> {
     const results: Record<string, VirtualBookContentReference> = {};
-    if(this.node) {
-      this.node.traverseContents({
-        preOrder: (node, stack, strategy) => {
-          const attributes = node.attrs;
-          if(attributes) {
-            const localName = attributes[VirtualBookNodeAttributes.LOCAL_NAME];
-            if(localName) {
-              results[localName] = new VirtualBookContentReference(
-                this.section,
-                new DescentResult(
-                  stack,
-                  strategy
-                ),
-              );
-              return false;
-            }
-          }
-        },
-      })
+    const source = this.node?.value || this.section.value;
+    if(source?.content && this.section.value) {
+      const state = this.node
+        ? cloneTraversal(this.node.state)
+        : {
+          root: this.section.value,
+          descent: [],
+        };
+      source.content.forEach(
+        (value, key) => extendTraversal(
+          state,
+          { key, value },
+          {
+            preOrder: (node, stack, strategy) => {
+              const attributes = node.attrs;
+              if(attributes) {
+                const localName = attributes[VirtualBookNodeAttributes.LOCAL_NAME];
+                if(localName) {
+                  results[localName] = new VirtualBookContentReference(
+                    this.section,
+                    new DescentResult(
+                      cloneTraversal(stack),
+                      strategy
+                    ),
+                  );
+                  return false;
+                }
+              }
+            },
+          },
+          VirtualBookSection.contentStrategy,
+        )
+      );
     }
     return results;
   }
