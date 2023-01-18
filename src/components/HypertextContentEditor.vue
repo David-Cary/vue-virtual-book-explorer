@@ -172,12 +172,11 @@
         <div v-if="selectedNode.node.type.name === 'compiledText'">
           <div>
             <label class="row-label">Template</label>
-            <input
-              type="text"
+            <textarea
               placeholder="expression"
               :value="selectedNode.node.attrs.template"
               @change="editor.commands.setCompiledText({template: $event.target.value}, selectedNode.pos)"
-            >
+            />
           </div>
           <div>
             <input
@@ -435,6 +434,20 @@ export default class HypertextContentEditor extends Vue {
               }
             }
             return undefined;
+          },
+          parseTemplate: (
+            expression: string,
+            terms: Record<string, unknown> = {},
+          ) => {
+            const parse = template(expression);
+            return parse(terms);
+          },
+          evaluate: (
+            expression: string,
+            terms: Record<string, unknown> = {},
+          ) => {
+            const parse = template(`<%= ${expression} %>`);
+            return parse(terms);
           },
         },
         compileText: (props: CompileTextProps) => {
@@ -778,6 +791,7 @@ export default class HypertextContentEditor extends Vue {
   font-weight bold
   margin-left 2px
   margin-right 2px
+  vertical-align top
 .row-label:after
   content ':'
 .property-card
